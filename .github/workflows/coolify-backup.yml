@@ -174,11 +174,20 @@ jobs:
           ls -laR ./backups 2>/dev/null | head -40 || true
           echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
           if [ -z "$RCLONE_REMOTE" ]; then
-            echo "RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+            echo "::error::RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+            exit 1
           elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
             echo "RCLONE_REMOTE has remote: prefix (looks OK)"
           else
-            echo "RCLONE_REMOTE has NO 'remote:' prefix - rclone treats it as LOCAL PATH (bug)"
+            echo "::error::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix, so rclone treats it as a LOCAL path and backups are silently lost on the runner. Fix the RCLONE_REMOTE secret."
+            echo "::error::Configured remotes: $(rclone listremotes 2>/dev/null | tr '\n' ' ')"
+            exit 1
+          fi
+          # Validate the referenced remote actually exists in RCLONE_CONFIG
+          REMOTE_NAME="${RCLONE_REMOTE%%:*}"
+          if ! rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
+            echo "::error::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG. Add it to the RCLONE_CONFIG secret or fix RCLONE_REMOTE."
+            exit 1
           fi
           echo "--- configured remotes ---"
           rclone listremotes 2>&1 || true
@@ -243,11 +252,20 @@ jobs:
           echo "=== DEBUG: cleanup start ==="
           echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
           if [ -z "$RCLONE_REMOTE" ]; then
-            echo "RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+            echo "::error::RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+            exit 1
           elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
             echo "RCLONE_REMOTE has remote: prefix (looks OK)"
           else
-            echo "RCLONE_REMOTE has NO 'remote:' prefix - rclone treats it as LOCAL PATH (bug)"
+            echo "::error::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix, so rclone treats it as a LOCAL path and backups are silently lost on the runner. Fix the RCLONE_REMOTE secret."
+            echo "::error::Configured remotes: $(rclone listremotes 2>/dev/null | tr '\n' ' ')"
+            exit 1
+          fi
+          # Validate the referenced remote actually exists in RCLONE_CONFIG
+          REMOTE_NAME="${RCLONE_REMOTE%%:*}"
+          if ! rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
+            echo "::error::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG. Add it to the RCLONE_CONFIG secret or fix RCLONE_REMOTE."
+            exit 1
           fi
           echo "--- configured remotes ---"
           rclone listremotes 2>&1 || true
