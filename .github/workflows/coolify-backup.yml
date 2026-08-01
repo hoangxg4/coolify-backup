@@ -171,7 +171,9 @@ jobs:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
 
       - name: Cleanup local
-        if: steps.upload.outputs.uploaded == 'true'
+        # always() is REQUIRED: without it, GitHub skips the step entirely
+        # (without evaluating `if:`) when any earlier step in the job failed.
+        if: always() && steps.upload.outputs.uploaded == 'true'
         run: rm -rf ./backups/
 
       - name: Upload backup logs
