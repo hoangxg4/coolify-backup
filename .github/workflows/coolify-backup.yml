@@ -6,7 +6,12 @@ on:
     paths: ['.github/workflows/coolify-backup.yml']
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
-  workflow_dispatch:        # Manual trigger
+  workflow_dispatch:
+    inputs:
+      debug_server:          # Debug: backup only this single server IP
+        description: 'DEBUG: only backup this server IP (empty = all servers)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -25,18 +30,25 @@ jobs:
           # Number of parallel matrix batches (tune as needed)
           MATRIX_BATCHES=10
 
-          RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
-            "$COOLIFY_API_URL/servers")
+          if [ -n "$DEBUG_SERVER" ]; then
+            # DEBUG MODE: backup only the single server provided via workflow_dispatch
+            MATRIX_BATCHES=1
+            SERVERS_JSON=$(echo "$DEBUG_SERVER" | jq -R -c '[.]')
+            SERVER_COUNT=1
+          else
+            RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              "$COOLIFY_API_URL/servers")
 
-          SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
-          SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
+            SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
+            SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
 
-          if [ "$SERVER_COUNT" -eq 0 ]; then
-            echo "::error::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
-            exit 1
+            if [ "$SERVER_COUNT" -eq 0 ]; then
+              echo "::error::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
+              exit 1
+            fi
           fi
 
-          # Dynamic matrix: always 10 batches, servers are divided evenly later
+          # Dynamic matrix: batches, servers are divided evenly later
           BATCH_LIST=$(seq 0 $((MATRIX_BATCHES - 1)) | jq -c -s '.')
 
           echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
@@ -46,6 +58,7 @@ jobs:
         env:
           COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          DEBUG_SERVER: ${{ inputs.debug_server }}
 
   backup:
     needs: get-servers
@@ -131,6 +144,10 @@ jobs:
             "root@$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
             { echo "scp failed: $SERVER_IP"; exit 1; }
 
+          echo "scp done for $SERVER_IP. Contents of $BACKUP_DIR:"
+          ls -la "$BACKUP_DIR"
+          du -sh "$BACKUP_DIR" 2>/dev/null || true
+
           timeout 60 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
             -i ~/.ssh/id_rsa "root@$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
 
@@ -149,6 +166,26 @@ jobs:
         id: upload
         if: always()
         run: |
+          echo "=== DEBUG: upload step start ==="
+          echo "pwd: $(pwd)"
+          echo "--- files under ./backups (with sizes) ---"
+          find ./backups -type f -printf '%p %s bytes\n' 2>/dev/null || echo "(no ./backups dir)"
+          echo "--- dir listing ---"
+          ls -laR ./backups 2>/dev/null | head -40 || true
+          echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
+          if [ -z "$RCLONE_REMOTE" ]; then
+            echo "RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+          elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+            echo "RCLONE_REMOTE has remote: prefix (looks OK)"
+          else
+            echo "RCLONE_REMOTE has NO 'remote:' prefix - rclone treats it as LOCAL PATH (bug)"
+          fi
+          echo "--- configured remotes ---"
+          rclone listremotes 2>&1 || true
+          echo "--- remote root listing BEFORE upload ---"
+          rclone lsf "$RCLONE_REMOTE/" --max-depth 2 2>&1 | head -20 || true
+          echo "=== DEBUG end ==="
+
           if [ ! -d "./backups" ] || [ -z "$(ls -A ./backups 2>/dev/null)" ]; then
             echo "No backups to upload"
             echo "uploaded=false" >> "$GITHUB_OUTPUT"
@@ -162,7 +199,9 @@ jobs:
               --transfers 4 \
               --checkers 8 \
               --stats 30s \
-              --stats-one-line
+              --stats-one-line || { echo "rclone copy FAILED for $SERVER_IP"; exit 1; }
+            echo "  -> remote listing after copy for $SERVER_IP:"
+            rclone lsf "$RCLONE_REMOTE/$SERVER_IP/" 2>&1 | head -10 || true
           done
 
           echo "All uploads complete"
@@ -201,6 +240,19 @@ jobs:
 
       - name: Cleanup old backups (keep max 5)
         run: |
+          echo "=== DEBUG: cleanup start ==="
+          echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
+          if [ -z "$RCLONE_REMOTE" ]; then
+            echo "RCLONE_REMOTE is EMPTY (misconfigured secret?)"
+          elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+            echo "RCLONE_REMOTE has remote: prefix (looks OK)"
+          else
+            echo "RCLONE_REMOTE has NO 'remote:' prefix - rclone treats it as LOCAL PATH (bug)"
+          fi
+          echo "--- configured remotes ---"
+          rclone listremotes 2>&1 || true
+          echo "=== DEBUG end ==="
+
           echo "Cleaning up old backups..."
 
           SERVERS=$(rclone lsf "$RCLONE_REMOTE/" --dirs-only | tr -d '/')
