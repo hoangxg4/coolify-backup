@@ -151,6 +151,7 @@ jobs:
         run: |
           if [ ! -d "./backups" ] || [ -z "$(ls -A ./backups 2>/dev/null)" ]; then
             echo "No backups to upload"
+            echo "uploaded=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -165,11 +166,12 @@ jobs:
           done
 
           echo "All uploads complete"
+          echo "uploaded=true" >> "$GITHUB_OUTPUT"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
 
       - name: Cleanup local
-        if: steps.upload.outcome == 'success'
+        if: steps.upload.outputs.uploaded == 'true'
         run: rm -rf ./backups/
 
       - name: Upload backup logs
