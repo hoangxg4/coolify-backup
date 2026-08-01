@@ -67,6 +67,9 @@ jobs:
           Host *
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
+            User root
+            IdentitiesOnly yes
+            BatchMode yes
           EOF
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -111,7 +114,7 @@ jobs:
           echo "Starting backup: $SERVER_IP"
 
           ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 \
-            -i ~/.ssh/id_rsa "$SERVER_IP" "
+            -i ~/.ssh/id_rsa "root@$SERVER_IP" "
             cd /tmp && \
             tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null && \
             docker volume ls -q | xargs -P 5 -I {} \
@@ -123,10 +126,10 @@ jobs:
 
           rsync -avz --timeout=60 --partial \
             -e "ssh -i ~/.ssh/id_rsa" \
-            "$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
+            "root@$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
             { echo "rsync failed: $SERVER_IP"; exit 1; }
 
-          ssh -i ~/.ssh/id_rsa "$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
+          ssh -i ~/.ssh/id_rsa "root@$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
 
           echo "Completed: $SERVER_IP"
           SCRIPT
