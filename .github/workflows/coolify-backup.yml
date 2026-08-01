@@ -1,155 +1,12 @@
-# Coolify Backup GitHub Action Implementation Plan
-
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Create a GitHub Action that auto-backs up Coolify servers (50+) using Matrix + Parallel strategy with rclone remote storage
-
-**Architecture:** Single workflow file with 3 jobs: get-servers (fetch API), backup (matrix with parallel SSH), cleanup (delete old backups). rclone parallel chunked upload.
-
-**Tech Stack:** GitHub Actions YAML, Bash scripts, rclone, rsync, jq, GNU parallel
-
-## Global Constraints
-
-- GitHub Actions runner: ubuntu-latest
-- Matrix: 5 batches x 10 servers = 50+ servers
-- Concurrent SSH per batch: 5
-- rclone parallel transfers: 4
-- Max backups per server: 5
-- Trigger: every 6 hours + manual
-
----
-
-## File Structure
-
-```
-.github/
-  workflows/
-    coolify-backup.yml      # Main workflow file
-```
-
----
-
-## Tasks
-
-### Task 1: Create workflow directory and file
-
-**Files:**
-- Create: `.github/workflows/coolify-backup.yml`
-
-**Interfaces:**
-- N/A (setup task)
-
-- [ ] **Step 1: Create directory structure**
-
-```bash
-mkdir -p .github/workflows
-```
-
-- [ ] **Step 2: Create workflow file with all jobs**
-
-Create `.github/workflows/coolify-backup.yml` with complete workflow (see full YAML in Task 1 Step 2 below).
-
-- [ ] **Step 3: Verify YAML syntax**
-
-Run: `cat .github/workflows/coolify-backup.yml | head -20`
-Expected: Valid YAML with on: triggers and jobs defined
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add .github/workflows/coolify-backup.yml
-git commit -m "feat: add Coolify backup GitHub Action workflow"
-```
-
----
-
-### Task 2: Create README with setup instructions
-
-**Files:**
-- Create: `README.md`
-
-**Interfaces:**
-- N/A (documentation task)
-
-- [ ] **Step 1: Create README**
-
-```markdown
-# Coolify Backup Action
-
-GitHub Action to automatically backup Coolify servers (50+) to rclone remote.
-
-## Features
-
-- **Matrix + Parallel**: 5 batches x 10 servers = 50+ servers backed up in ~10-15 minutes
-- **rclone Storage**: Parallel chunked upload to any remote (S3, B2, Drive, etc.)
-- **Auto Cleanup**: Keeps max 5 backups per server
-- **Schedule**: Runs every 6 hours + manual trigger
-
-## Secrets Required
-
-| Secret | Description |
-|--------|-------------|
-| `COOLIFY_API_URL` | Full API URL (e.g., `https://coolify.example.com/api/v1`) |
-| `COOLIFY_API_TOKEN` | API bearer token |
-| `SSH_PRIVATE_KEY` | Full private key content |
-| `RCLONE_CONFIG` | Full rclone config file content (e.g., `[myremote]`) |
-| `RCLONE_REMOTE` | Remote name + base path (e.g., `myremote:coolify-backups`) |
-
-## Remote Folder Structure
-
-```
-<rclone_remote>/
-  1.2.3.4/
-    backup_2025-01-15_02-00-00.tar.gz
-    backup_2025-01-15_08-00-00.tar.gz
-    ...
-  5.6.7.8/
-    ...
-```
-
-## Setup
-
-1. Create rclone remote locally:
-   ```bash
-   rclone config
-   # Create remote (e.g., "myremote") with your storage provider
-   ```
-2. Copy `~/.config/rclone/rclone.conf` content to `RCLONE_CONFIG` secret
-3. Add other GitHub Secrets in repo settings
-4. Push workflow file to `.github/workflows/coolify-backup.yml`
-5. Action runs automatically every 6 hours or trigger manually
-
-## Backup Contents
-
-Each backup contains:
-- `/data/coolify` directory
-- All Docker volumes (named volumes)
-
-## Performance
-
-- 5 concurrent runners (matrix batches)
-- 5 concurrent SSH sessions per batch
-- Total time for 50 servers: ~10-15 minutes
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add README.md
-git commit -m "docs: add README with setup instructions"
-```
-
----
-
-## Full Workflow YAML (Task 1 Step 2 content)
-
-```yaml
 name: Coolify Backup
 
 on:
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
   workflow_dispatch:        # Manual trigger
+
+permissions:
+  contents: read
 
 jobs:
   get-servers:
@@ -163,10 +20,10 @@ jobs:
         run: |
           RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "$COOLIFY_API_URL/servers")
-          
+
           SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
           SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
-          
+
           echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
           echo "server_count=$SERVER_COUNT" >> $GITHUB_OUTPUT
           echo "Found $SERVER_COUNT servers"
@@ -213,28 +70,28 @@ jobs:
           BATCH_SIZE=10
           START=$((MATRIX_BATCH * BATCH_SIZE))
           END=$((START + BATCH_SIZE))
-          
+
           SERVERS=$(echo "$SERVERS_JSON" | jq -r '.[]' | \
             sed -n "$((START+1)),${END}p")
-          
+
           if [ -z "$SERVERS" ]; then
             echo "No servers in this batch"
             exit 0
           fi
-          
+
           echo "Backing up servers: $SERVERS"
-          
+
           cat > backup_server.sh << 'SCRIPT'
           #!/bin/bash
           SERVER_IP=$1
           BACKUP_DIR="./backups/$SERVER_IP"
           mkdir -p "$BACKUP_DIR"
-          
+
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
           REMOTE_FILE="/tmp/coolify_backup_${TIMESTAMP}.tar.gz"
-          
+
           echo "Starting backup: $SERVER_IP"
-          
+
           ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 \
             -i ~/.ssh/id_rsa "$SERVER_IP" "
             cd /tmp && \
@@ -245,18 +102,18 @@ jobs:
             tar czf $REMOTE_FILE coolify_data.tar.gz vol_*.tar.gz && \
             rm -f coolify_data.tar.gz vol_*.tar.gz
           " || { echo "SSH failed: $SERVER_IP"; exit 1; }
-          
+
           rsync -avz --timeout=60 --partial \
             -e "ssh -i ~/.ssh/id_rsa" \
             "$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
             { echo "rsync failed: $SERVER_IP"; exit 1; }
-          
+
           ssh -i ~/.ssh/id_rsa "$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
-          
+
           echo "Completed: $SERVER_IP"
           SCRIPT
           chmod +x backup_server.sh
-          
+
           echo "$SERVERS" | xargs -P 5 -I {} bash backup_server.sh {}
         env:
           SERVERS_JSON: ${{ needs.get-servers.outputs.servers_json }}
@@ -269,17 +126,17 @@ jobs:
             echo "No backups to upload"
             exit 0
           fi
-          
+
           for dir in ./backups/*/; do
             SERVER_IP=$(basename "$dir")
             echo "Uploading backups for $SERVER_IP..."
             rclone copy "$dir" "$RCLONE_REMOTE/$SERVER_IP/" \
               --transfers 4 \
               --checkers 8 \
-              --stats-one-line \
-              --progress
+              --stats 30s \
+              --stats-one-line
           done
-          
+
           echo "All uploads complete"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
@@ -314,23 +171,23 @@ jobs:
       - name: Cleanup old backups (keep max 5)
         run: |
           echo "Cleaning up old backups..."
-          
+
           SERVERS=$(rclone lsf "$RCLONE_REMOTE/" --dirs-only | tr -d '/')
-          
+
           for SERVER_IP in $SERVERS; do
             echo "Processing: $SERVER_IP"
-            
+
             BACKUPS=$(rclone lsl "$RCLONE_REMOTE/$SERVER_IP/" | \
               awk '{print $4}' | \
               grep "\.tar\.gz$" | \
               sort)
-            
+
             COUNT=$(echo "$BACKUPS" | wc -l)
-            
+
             if [ "$COUNT" -gt 5 ]; then
               DELETE_COUNT=$((COUNT - 5))
               echo "  Deleting $DELETE_COUNT old backups..."
-              
+
               echo "$BACKUPS" | head -n "$DELETE_COUNT" | while read FILE; do
                 if [ -n "$FILE" ]; then
                   echo "  Deleting: $FILE"
@@ -341,20 +198,7 @@ jobs:
               echo "  Keeping all $COUNT backups (<= 5)"
             fi
           done
-          
+
           echo "Cleanup complete"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
-```
-
-## Execution Handoff
-
-Plan complete and saved to `docs/superpowers/plans/2025-01-15-coolify-backup-action.md`.
-
-**Two execution options:**
-
-1. **Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
-
-2. **Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?**
