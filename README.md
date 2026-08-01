@@ -4,7 +4,7 @@ GitHub Action tự động backup các Coolify servers (50+) lên rclone remote 
 
 ## Tính năng
 
-- **Matrix + Parallel**: 5 batches x 10 servers = 50+ servers backup trong ~10-15 phút
+- **Dynamic Matrix + Parallel**: Tự động chia servers vào 10 matrix batches chạy song song, mỗi batch backup các servers đồng thời
 - **rclone Storage**: Parallel chunked upload tới bất kỳ remote nào (S3, B2, Drive, v.v.)
 - **Auto Cleanup**: Giữ tối đa 5 bản backup/server
 - **Schedule**: Chạy mỗi 6 tiếng + manual trigger
@@ -61,9 +61,10 @@ Mỗi backup gồm:
 
 ## Performance
 
-- 5 concurrent runners (matrix batches)
-- 5 concurrent SSH sessions per batch
-- Tổng thời gian cho 50 servers: ~10-15 phút
+- 10 concurrent runners (matrix batches, tự chia servers đều)
+- 10 concurrent SSH sessions per batch
+- Tổng thời gian cho 50 servers: ~5-10 phút
+- `MATRIX_BATCHES` có thể chỉnh trong workflow (get-servers job)
 
 ## Tạo rclone remote
 

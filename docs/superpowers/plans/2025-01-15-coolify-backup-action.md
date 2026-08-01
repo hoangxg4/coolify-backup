@@ -11,8 +11,8 @@
 ## Global Constraints
 
 - GitHub Actions runner: ubuntu-latest
-- Matrix: 5 batches x 10 servers = 50+ servers
-- Concurrent SSH per batch: 5
+- Matrix: dynamic 10 batches, servers tự chia đều (ceil division)
+- Concurrent SSH per batch: 10
 - rclone parallel transfers: 4
 - Max backups per server: 5
 - Trigger: every 6 hours + manual
@@ -80,7 +80,7 @@ GitHub Action to automatically backup Coolify servers (50+) to rclone remote.
 
 ## Features
 
-- **Matrix + Parallel**: 5 batches x 10 servers = 50+ servers backed up in ~10-15 minutes
+- **Dynamic Matrix + Parallel**: Tự động chia servers vào 10 matrix batches chạy song song
 - **rclone Storage**: Parallel chunked upload to any remote (S3, B2, Drive, etc.)
 - **Auto Cleanup**: Keeps max 5 backups per server
 - **Schedule**: Runs every 6 hours + manual trigger
@@ -127,9 +127,9 @@ Each backup contains:
 
 ## Performance
 
-- 5 concurrent runners (matrix batches)
-- 5 concurrent SSH sessions per batch
-- Total time for 50 servers: ~10-15 minutes
+- 10 concurrent runners (dynamic matrix batches)
+- 10 concurrent SSH sessions per batch
+- Total time for 50 servers: ~5-10 minutes
 ```
 
 - [ ] **Step 2: Commit**
@@ -157,19 +157,32 @@ jobs:
     outputs:
       servers_json: ${{ steps.fetch.outputs.servers_json }}
       server_count: ${{ steps.fetch.outputs.server_count }}
+      batch_list: ${{ steps.fetch.outputs.batch_list }}
     steps:
       - name: Fetch server list from Coolify API
         id: fetch
         run: |
+          # Number of parallel matrix batches (tune as needed)
+          MATRIX_BATCHES=10
+
           RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "$COOLIFY_API_URL/servers")
-          
+
           SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
           SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
-          
+
+          if [ "$SERVER_COUNT" -eq 0 ]; then
+            echo "::error::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
+            exit 1
+          fi
+
+          # Dynamic matrix: always 10 batches, servers are divided evenly later
+          BATCH_LIST=$(seq 0 $((MATRIX_BATCHES - 1)) | jq -c -s '.')
+
           echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
           echo "server_count=$SERVER_COUNT" >> $GITHUB_OUTPUT
-          echo "Found $SERVER_COUNT servers"
+          echo "batch_list=$BATCH_LIST" >> $GITHUB_OUTPUT
+          echo "Found $SERVER_COUNT servers, running $MATRIX_BATCHES parallel batches"
         env:
           COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
@@ -179,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        batch: [0, 1, 2, 3, 4]
+        batch: ${{ fromJSON(needs.get-servers.outputs.batch_list) }}
       fail-fast: false
     steps:
       - name: Checkout
@@ -210,31 +223,33 @@ jobs:
 
       - name: Backup servers in parallel
         run: |
-          BATCH_SIZE=10
+          # Divide servers evenly across 10 batches (ceil division)
+          MATRIX_BATCHES=10
+          BATCH_SIZE=$(( (SERVER_COUNT + MATRIX_BATCHES - 1) / MATRIX_BATCHES ))
           START=$((MATRIX_BATCH * BATCH_SIZE))
           END=$((START + BATCH_SIZE))
-          
+
           SERVERS=$(echo "$SERVERS_JSON" | jq -r '.[]' | \
             sed -n "$((START+1)),${END}p")
-          
+
           if [ -z "$SERVERS" ]; then
             echo "No servers in this batch"
             exit 0
           fi
-          
+
           echo "Backing up servers: $SERVERS"
-          
+
           cat > backup_server.sh << 'SCRIPT'
           #!/bin/bash
           SERVER_IP=$1
           BACKUP_DIR="./backups/$SERVER_IP"
           mkdir -p "$BACKUP_DIR"
-          
+
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
           REMOTE_FILE="/tmp/coolify_backup_${TIMESTAMP}.tar.gz"
-          
+
           echo "Starting backup: $SERVER_IP"
-          
+
           ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 \
             -i ~/.ssh/id_rsa "$SERVER_IP" "
             cd /tmp && \
@@ -245,21 +260,22 @@ jobs:
             tar czf $REMOTE_FILE coolify_data.tar.gz vol_*.tar.gz && \
             rm -f coolify_data.tar.gz vol_*.tar.gz
           " || { echo "SSH failed: $SERVER_IP"; exit 1; }
-          
+
           rsync -avz --timeout=60 --partial \
             -e "ssh -i ~/.ssh/id_rsa" \
             "$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
             { echo "rsync failed: $SERVER_IP"; exit 1; }
-          
+
           ssh -i ~/.ssh/id_rsa "$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
-          
+
           echo "Completed: $SERVER_IP"
           SCRIPT
           chmod +x backup_server.sh
-          
-          echo "$SERVERS" | xargs -P 5 -I {} bash backup_server.sh {}
+
+          echo "$SERVERS" | xargs -P 10 -I {} bash backup_server.sh {}
         env:
           SERVERS_JSON: ${{ needs.get-servers.outputs.servers_json }}
+          SERVER_COUNT: ${{ needs.get-servers.outputs.server_count }}
           MATRIX_BATCH: ${{ matrix.batch }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -269,17 +285,17 @@ jobs:
             echo "No backups to upload"
             exit 0
           fi
-          
+
           for dir in ./backups/*/; do
             SERVER_IP=$(basename "$dir")
             echo "Uploading backups for $SERVER_IP..."
             rclone copy "$dir" "$RCLONE_REMOTE/$SERVER_IP/" \
               --transfers 4 \
               --checkers 8 \
-              --stats-one-line \
-              --progress
+              --stats 30s \
+              --stats-one-line
           done
-          
+
           echo "All uploads complete"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}

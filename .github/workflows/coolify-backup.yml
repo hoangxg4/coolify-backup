@@ -14,19 +14,32 @@ jobs:
     outputs:
       servers_json: ${{ steps.fetch.outputs.servers_json }}
       server_count: ${{ steps.fetch.outputs.server_count }}
+      batch_list: ${{ steps.fetch.outputs.batch_list }}
     steps:
       - name: Fetch server list from Coolify API
         id: fetch
         run: |
+          # Number of parallel matrix batches (tune as needed)
+          MATRIX_BATCHES=10
+
           RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
             "$COOLIFY_API_URL/servers")
 
           SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
           SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
 
+          if [ "$SERVER_COUNT" -eq 0 ]; then
+            echo "::error::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
+            exit 1
+          fi
+
+          # Dynamic matrix: always 10 batches, servers are divided evenly later
+          BATCH_LIST=$(seq 0 $((MATRIX_BATCHES - 1)) | jq -c -s '.')
+
           echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
           echo "server_count=$SERVER_COUNT" >> $GITHUB_OUTPUT
-          echo "Found $SERVER_COUNT servers"
+          echo "batch_list=$BATCH_LIST" >> $GITHUB_OUTPUT
+          echo "Found $SERVER_COUNT servers, running $MATRIX_BATCHES parallel batches"
         env:
           COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
@@ -36,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        batch: [0, 1, 2, 3, 4]
+        batch: ${{ fromJSON(needs.get-servers.outputs.batch_list) }}
       fail-fast: false
     steps:
       - name: Checkout
@@ -67,7 +80,9 @@ jobs:
 
       - name: Backup servers in parallel
         run: |
-          BATCH_SIZE=10
+          # Divide servers evenly across 10 batches (ceil division)
+          MATRIX_BATCHES=10
+          BATCH_SIZE=$(( (SERVER_COUNT + MATRIX_BATCHES - 1) / MATRIX_BATCHES ))
           START=$((MATRIX_BATCH * BATCH_SIZE))
           END=$((START + BATCH_SIZE))
 
@@ -114,9 +129,10 @@ jobs:
           SCRIPT
           chmod +x backup_server.sh
 
-          echo "$SERVERS" | xargs -P 5 -I {} bash backup_server.sh {}
+          echo "$SERVERS" | xargs -P 10 -I {} bash backup_server.sh {}
         env:
           SERVERS_JSON: ${{ needs.get-servers.outputs.servers_json }}
+          SERVER_COUNT: ${{ needs.get-servers.outputs.server_count }}
           MATRIX_BATCH: ${{ matrix.batch }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
