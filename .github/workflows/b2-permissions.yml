@@ -1,0 +1,13 @@
+name: B2 Permissions
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "b2 permissions ok"

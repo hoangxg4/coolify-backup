@@ -1,0 +1,12 @@
+name: B1 Triggers
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:        # Manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "b1 triggers ok"

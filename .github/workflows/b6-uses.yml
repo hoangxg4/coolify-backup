@@ -1,0 +1,26 @@
+name: B6 Uses
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        batch: [0, 1]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-logs-batch-${{ matrix.batch }}
+          path: /tmp/backup*.log
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf ./backups/

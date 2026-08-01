@@ -1,0 +1,29 @@
+name: B3 Outputs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  producer:
+    runs-on: ubuntu-latest
+    outputs:
+      servers_json: ${{ steps.fetch.outputs.servers_json }}
+    steps:
+      - name: Fetch
+        id: fetch
+        run: |
+          SERVERS_JSON='["1.2.3.4"]'
+          echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
+        env:
+          COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+
+  consumer:
+    needs: producer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consume
+        run: |
+          echo "b3 outputs ok: $SERVERS_JSON"
+        env:
+          SERVERS_JSON: ${{ needs.producer.outputs.servers_json }}
