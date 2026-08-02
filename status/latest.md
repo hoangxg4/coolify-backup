@@ -2,32 +2,33 @@
 
 | | |
 |---|---|
-| **Run** | #25 (id `30739989706`) |
+| **Run** | #26 (id `30750526359`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-08-02T08:32:56Z |
-| **Duration** | 17m 09s |
+| **Started** | 2026-08-02T13:43:08Z |
+| **Duration** | 18m 30s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
 
-- **Servers**: 68 (in 10 batch(es))
-- **Backup OK**: 56
-- **Failed**: 12
+- **Servers**: 75 (in 10 batch(es))
+- **Backup OK**: 62
+- **Failed**: 13
 - **Partial (data/coolify missing, volumes only)**: 0
 - **Upload failed**: 1
-- **Cleanup**: 59 server dir(s) scanned, 53 old backup(s) deleted
+- **Cleanup**: 66 server dir(s) scanned, 53 old backup(s) deleted
 
 ## Failed hosts
 
 | Host | Reason |
 |---|---|
+| 45.76.20.52 | backup failed (ssh rc=255) |
 | 45.77.45.79 | backup failed (ssh rc=255) |
 | 75.119.149.222 | backup failed (ssh rc=124) |
 | 8.138.177.38 | backup failed (ssh rc=255) |
 | 209.126.13.81 | backup failed (ssh rc=255) |
+| 134.185.86.56 | backup failed (ssh rc=255) |
 | 5.129.206.12 | backup failed (ssh rc=124) |
 | 13.140.146.212 | backup failed (ssh rc=255) |
-| 141.136.44.86 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
 | 136.116.116.216 | backup failed (ssh rc=255) |
@@ -50,13 +51,13 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 7 | 7 | 0 |
-| 1 | 7 | 7 | 0 |
-| 2 | 7 | 5 | 2 |
-| 3 | 7 | 5 | 2 |
-| 4 | 7 | 6 | 1 |
-| 5 | 7 | 6 | 1 |
-| 6 | 7 | 4 | 3 |
-| 7 | 7 | 5 | 2 |
-| 8 | 7 | 7 | 0 |
-| 9 | 5 | 4 | 1 |
+| 0 | 8 | 8 | 0 |
+| 1 | 8 | 8 | 0 |
+| 2 | 8 | 5 | 3 |
+| 3 | 8 | 6 | 2 |
+| 4 | 8 | 6 | 2 |
+| 5 | 8 | 7 | 1 |
+| 6 | 8 | 6 | 2 |
+| 7 | 8 | 6 | 2 |
+| 8 | 8 | 8 | 0 |
+| 9 | 3 | 2 | 1 |
