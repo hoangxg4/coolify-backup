@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Run** | #20 (id `30727142455`) |
+| **Run** | #21 (id `30728925720`) |
 | **Trigger** | push (workflow change) |
-| **Started** | 2026-08-02T01:29:41Z |
-| **Duration** | 64m 49s |
-| **Result** | :white_check_mark: SUCCESS |
+| **Started** | 2026-08-02T02:28:40Z |
+| **Duration** | 16m 23s |
+| **Result** | :warning: PARTIAL |
 
 ## Summary
 
@@ -14,8 +14,8 @@
 - **Backup OK**: 7
 - **Failed**: 0
 - **Partial (data/coolify missing, volumes only)**: 0
-- **Upload failed**: 0
-- **Cleanup**: 57 server dir(s) scanned, 80 old backup(s) deleted
+- **Upload failed**: 1
+- **Cleanup**: 57 server dir(s) scanned, 15 old backup(s) deleted
 
 ## Failed hosts
 
@@ -33,7 +33,7 @@
 
 | Host | Reason |
 |---|---|
-| - | None |
+| 62.238.41.18 | rclone copy failed |
 
 ## Per-batch
 
