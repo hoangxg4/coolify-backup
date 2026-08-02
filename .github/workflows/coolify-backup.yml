@@ -140,12 +140,17 @@ jobs:
           if timeout 300 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
             -i ~/.ssh/id_rsa "root@$SERVER_IP" "
             trap 'rm -f coolify_data.tar.gz vol_*.tar.gz' EXIT
-            cd /tmp && \
-            tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null && \
+            cd /tmp || exit 1
+            tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null || \
+              echo \"warn: /data/coolify missing or unreadable on $SERVER_IP\" >&2
             (docker volume ls -q 2>/dev/null | xargs -P 5 -I {} \
               docker run --rm -v {}:/data -v /tmp:/backup alpine \
-              tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null); \
-            tar czf - coolify_data.tar.gz \$(ls vol_*.tar.gz 2>/dev/null)
+              tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null)
+            FILES=\"\"
+            [ -f coolify_data.tar.gz ] && FILES=\"\$FILES coolify_data.tar.gz\"
+            for f in vol_*.tar.gz; do [ -f \"\$f\" ] && FILES=\"\$FILES \$f\"; done
+            [ -n \"\$FILES\" ] || { echo \"error: nothing to back up on $SERVER_IP\" >&2; exit 1; }
+            tar czf - \$FILES
           " > "$OUT_FILE"; then
             if [ "$DEBUG" = "true" ]; then
               echo "Backup file for $SERVER_IP:"
