@@ -70,8 +70,6 @@ jobs:
   backup:
     needs: get-servers
     runs-on: ubuntu-latest
-    outputs:
-      result: ${{ steps.results.outputs.result }}
     strategy:
       matrix:
         batch: ${{ fromJSON(needs.get-servers.outputs.batch_list) }}
@@ -274,7 +272,10 @@ jobs:
         id: results
         if: always()
         run: |
-          # Compact per-batch summary consumed by the report job
+          # Compact per-batch summary consumed by the report job.
+          # NOTE: written to a FILE, not a job output — GitHub matrix jobs with
+          # a shared output key only expose the LAST instance's value, so the
+          # report job aggregates per-batch artifacts instead.
           RESULTS_FILE=/tmp/batch_results.txt
           BATCH=$MATRIX_BATCH
           TOTAL=0; OK=0
@@ -294,9 +295,19 @@ jobs:
           fi
           JSON=$(printf '{"batch":%d,"total":%d,"ok":%d,"failed":%s,"partial":%s,"upload_failed":%s}' \
             "$BATCH" "$TOTAL" "$OK" "$FAILED_JSON" "$PARTIAL_JSON" "$UPFAIL_JSON")
-          echo "result=$JSON" >> "$GITHUB_OUTPUT"
+          mkdir -p /tmp/batch_results
+          echo "$JSON" > "/tmp/batch_results/batch_${BATCH}.json"
         env:
           MATRIX_BATCH: ${{ matrix.batch }}
+
+      - name: Upload batch results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-results-${{ matrix.batch }}
+          path: /tmp/batch_results/batch_*.json
+          retention-days: 7
+          if-no-files-found: ignore
 
   cleanup:
     needs: [get-servers, backup]
@@ -418,16 +429,23 @@ jobs:
             git rm -rf . 2>/dev/null || true
           fi
 
+      - name: Download batch results
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: batch-results-*
+          path: /tmp/batch_results
+          merge-multiple: true
+
       - name: Aggregate results & write status files
         run: |
           set -e
           mkdir -p status
 
-          RAW='${{ needs.backup.outputs.result }}'
-          if [ -n "$RAW" ] && [ "$RAW" != "null" ]; then
-            # Matrix outputs: newline-separated JSON objects; flatten array/object entries, drop nulls.
-            echo "$RAW" | jq -s -c '[.[] | if type=="array" then .[] else . end | select(. != null)]' \
-              > /tmp/batch_results.json
+          # Matrix job outputs DON'T concatenate (shared key => only last value),
+          # so per-batch results arrive as separate artifact files instead.
+          if ls /tmp/batch_results/batch_*.json >/dev/null 2>&1; then
+            jq -s -c '.' /tmp/batch_results/batch_*.json > /tmp/batch_results.json
           else
             echo '[]' > /tmp/batch_results.json
           fi
