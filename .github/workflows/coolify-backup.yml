@@ -425,7 +425,9 @@ jobs:
 
           RAW='${{ needs.backup.outputs.result }}'
           if [ -n "$RAW" ] && [ "$RAW" != "null" ]; then
-            echo "$RAW" | jq -c '[.[] | select(. != null)]' > /tmp/batch_results.json
+            # Matrix outputs: newline-separated JSON objects; flatten array/object entries, drop nulls.
+            echo "$RAW" | jq -s -c '[.[] | if type=="array" then .[] else . end | select(. != null)]' \
+              > /tmp/batch_results.json
           else
             echo '[]' > /tmp/batch_results.json
           fi
@@ -452,10 +454,18 @@ jobs:
           fi
 
           STARTED="$RUN_STARTED_AT"
-          START_EPOCH=$(date -d "$STARTED" +%s)
-          NOW_EPOCH=$(date +%s)
-          DUR=$((NOW_EPOCH - START_EPOCH))
-          DUR_TXT=$(printf "%dm %02ds" $((DUR/60)) $((DUR%60)))
+          if [ -z "$STARTED" ] || [ "$STARTED" = "null" ]; then
+            STARTED=$(gh run view "$RUN_ID" --json createdAt --jq '.createdAt' 2>/dev/null || true)
+          fi
+          if [ -z "$STARTED" ]; then
+            STARTED="unknown"
+            DUR_TXT="n/a"
+          else
+            START_EPOCH=$(date -d "$STARTED" +%s)
+            NOW_EPOCH=$(date +%s)
+            DUR=$((NOW_EPOCH - START_EPOCH))
+            DUR_TXT=$(printf "%dm %02ds" $((DUR/60)) $((DUR%60)))
+          fi
 
           case "$TRIGGER_NAME" in
             schedule) TRIGGER="scheduled (every 6h)" ;;
@@ -549,6 +559,7 @@ jobs:
           RUN_STARTED_AT: ${{ github.run_started_at }}
           TRIGGER_NAME: ${{ github.event_name }}
           DEBUG_SERVER: ${{ inputs.debug_server }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Commit & push status branch
         run: |
