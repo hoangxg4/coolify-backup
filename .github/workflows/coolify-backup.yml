@@ -238,7 +238,7 @@ jobs:
             xargs -P 5 -I DIR bash -c '
               SERVER_IP=$(basename "$1")
               echo "Uploading backups for $SERVER_IP..."
-              if rclone copy "$1" "$RCLONE_REMOTE/$SERVER_IP/" \
+              if timeout 600 rclone copy "$1" "$RCLONE_REMOTE/$SERVER_IP/" \
                   -q --transfers 4 --checkers 8; then
                 if [ "$DEBUG" = "true" ]; then
                   echo "  -> remote listing after copy for $SERVER_IP:"
@@ -349,7 +349,7 @@ jobs:
           cat > cleanup_server.sh << 'SCRIPT'
           #!/bin/bash
           SERVER_IP=$1
-          BACKUPS=$(rclone lsl "$RCLONE_REMOTE/$SERVER_IP/" 2>/dev/null | \
+          BACKUPS=$(timeout 120 rclone lsl "$RCLONE_REMOTE/$SERVER_IP/" 2>/dev/null | \
             awk '{print $4}' | \
             grep "\.tar\.gz$" | \
             sort)
@@ -366,7 +366,7 @@ jobs:
             echo "$DELETE_COUNT" >> /tmp/cleanup_del.txt
             echo "$BACKUPS" | head -n "$DELETE_COUNT" | while read FILE; do
               if [ -n "$FILE" ]; then
-                if rclone delete "$RCLONE_REMOTE/$SERVER_IP/$FILE" 2>/dev/null; then
+                if timeout 120 rclone delete "$RCLONE_REMOTE/$SERVER_IP/$FILE" 2>/dev/null; then
                   [ "$DEBUG" = "true" ] && echo "  Deleted: $SERVER_IP/$FILE"
                 else
                   echo "::warning::rclone delete failed: $SERVER_IP/$FILE"
@@ -380,7 +380,7 @@ jobs:
           SCRIPT
           chmod +x cleanup_server.sh
 
-          SERVERS=$(rclone lsf "$RCLONE_REMOTE/" --dirs-only 2>/dev/null | tr -d '/')
+          SERVERS=$(timeout 120 rclone lsf "$RCLONE_REMOTE/" --dirs-only 2>/dev/null | tr -d '/')
 
           if [ -z "$SERVERS" ]; then
             echo "No server directories found on remote - nothing to clean"
