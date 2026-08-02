@@ -2,20 +2,20 @@
 
 | | |
 |---|---|
-| **Run** | #22 (id `30729593748`) |
+| **Run** | #23 (id `30730202016`) |
 | **Trigger** | push (workflow change) |
-| **Started** | 2026-08-02T02:51:36Z |
-| **Duration** | 16m 34s |
+| **Started** | 2026-08-02T03:11:57Z |
+| **Duration** | 17m 32s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
 
 - **Servers**: 68 (in 10 batch(es))
-- **Backup OK**: 55
-- **Failed**: 13
+- **Backup OK**: 54
+- **Failed**: 14
 - **Partial (data/coolify missing, volumes only)**: 0
 - **Upload failed**: 1
-- **Cleanup**: 57 server dir(s) scanned, 52 old backup(s) deleted
+- **Cleanup**: 57 server dir(s) scanned, 53 old backup(s) deleted
 
 ## Failed hosts
 
@@ -31,8 +31,9 @@
 | 49.13.131.74 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
+| 141.136.44.86 | backup failed (ssh rc=255) |
 | 176.31.163.96 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=124) |
 
 ## Partial backups
@@ -51,13 +52,13 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 7 | 7 | 1 |
-| 1 | 7 | 5 | 1 |
+| 0 | 7 | 7 | 0 |
+| 1 | 7 | 5 | 2 |
 | 2 | 7 | 6 | 1 |
-| 3 | 7 | 5 | 1 |
+| 3 | 7 | 5 | 2 |
 | 4 | 7 | 6 | 1 |
-| 5 | 7 | 6 | 1 |
-| 6 | 7 | 4 | 1 |
-| 7 | 7 | 5 | 1 |
-| 8 | 7 | 7 | 1 |
+| 5 | 7 | 5 | 2 |
+| 6 | 7 | 4 | 3 |
+| 7 | 7 | 5 | 2 |
+| 8 | 7 | 7 | 0 |
 | 9 | 5 | 4 | 1 |
