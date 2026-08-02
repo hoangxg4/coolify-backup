@@ -508,7 +508,7 @@ jobs:
           UPFAIL_TABLE=$(echo "$UPFAIL_ARR" | jq -r '.[] | "| \(.host) | \(.reason) |"')
           [ -z "$UPFAIL_TABLE" ] && UPFAIL_TABLE="| - | None |"
 
-          BATCH_TABLE=$(jq -r '.[] | "| \(.batch) | \(.total) | \(.ok) | \([.failed] | length) |"' \
+          BATCH_TABLE=$(jq -r '.[] | "| \(.batch) | \(.total) | \(.ok) | \(.failed | length) |"' \
             /tmp/batch_results.json)
 
           cat > status/latest.md << EOF
@@ -560,13 +560,20 @@ jobs:
             echo
             echo "## Run #${{ github.run_number }} - $STARTED - $RESULT - $DUR_TXT - $OK/$TOTAL OK"
             if [ "$FAILED_COUNT" -gt 0 ]; then
-              echo "Failed: $(echo "$FAILED_ARR" | jq -r '.[] | "\(.host) (\(.reason))"' | paste -sd ', ' -)"
+              echo "Failed: $(echo "$FAILED_ARR" | jq -r '[.[] | "\(.host) (\(.reason))"] | join(", ")')"
             else
               echo "Failed: none"
             fi
           } > /tmp/history_block.md
+          # Keep the H1 header pinned at the TOP; strip any header already in
+          # the old file before prepending the new block.
           if [ -f status/history.md ]; then
-            cat /tmp/history_block.md status/history.md > /tmp/history_new.md
+            {
+              echo "# Coolify Backup - Run History"
+              echo
+              cat /tmp/history_block.md
+              grep -v '^# Coolify Backup - Run History' status/history.md | sed '/./,$!d'
+            } > /tmp/history_new.md
             mv /tmp/history_new.md status/history.md
           else
             echo "# Coolify Backup - Run History" > status/history.md
