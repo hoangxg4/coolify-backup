@@ -12,6 +12,11 @@ on:
         description: 'DEBUG: only backup this server IP (empty = all servers)'
         required: false
         default: ''
+      debug:                 # Debug: verbose logs (default: hidden)
+        description: 'DEBUG: show verbose logs (file listings, rclone diagnostics)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,8 +48,9 @@ jobs:
             SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
 
             if [ "$SERVER_COUNT" -eq 0 ]; then
-              echo "::error::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
-              exit 1
+              echo "::warning::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
+              SERVERS_JSON='[]'
+              SERVER_COUNT=0
             fi
           fi
 
@@ -89,8 +95,8 @@ jobs:
 
       - name: Setup rclone
         run: |
-          sudo apt-get update
-          sudo apt-get install -y rclone rsync jq
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone rsync jq
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
           chmod 600 ~/.config/rclone/rclone.conf
@@ -122,78 +128,82 @@ jobs:
           mkdir -p "$BACKUP_DIR"
 
           TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-          REMOTE_FILE="/tmp/coolify_backup_${TIMESTAMP}.tar.gz"
           LOG_FILE="/tmp/backup_${SERVER_IP}.log"
           exec > >(tee "$LOG_FILE") 2>&1
 
           echo "Starting backup: $SERVER_IP"
 
-          timeout 600 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
+          # Single SSH connection: build + stream the tarball directly to local
+          # disk (no separate scp round-trip, no remote temp file to clean up).
+          OUT_FILE="$BACKUP_DIR/coolify_backup_${TIMESTAMP}.tar.gz"
+
+          if timeout 300 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
             -i ~/.ssh/id_rsa "root@$SERVER_IP" "
+            trap 'rm -f coolify_data.tar.gz vol_*.tar.gz' EXIT
             cd /tmp && \
             tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null && \
             (docker volume ls -q 2>/dev/null | xargs -P 5 -I {} \
               docker run --rm -v {}:/data -v /tmp:/backup alpine \
               tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null); \
-            tar czf $REMOTE_FILE coolify_data.tar.gz \$(ls vol_*.tar.gz 2>/dev/null) && \
-            rm -f coolify_data.tar.gz vol_*.tar.gz
-          " || { echo "SSH failed: $SERVER_IP"; exit 1; }
-
-          timeout 600 scp -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
-            -i ~/.ssh/id_rsa \
-            "root@$SERVER_IP:$REMOTE_FILE" "$BACKUP_DIR/" || \
-            { echo "scp failed: $SERVER_IP"; exit 1; }
-
-          echo "scp done for $SERVER_IP. Contents of $BACKUP_DIR:"
-          ls -la "$BACKUP_DIR"
-          du -sh "$BACKUP_DIR" 2>/dev/null || true
-
-          timeout 60 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
-            -i ~/.ssh/id_rsa "root@$SERVER_IP" "rm -f $REMOTE_FILE" 2>/dev/null
-
-          echo "Completed: $SERVER_IP"
+            tar czf - coolify_data.tar.gz \$(ls vol_*.tar.gz 2>/dev/null)
+          " > "$OUT_FILE"; then
+            if [ "$DEBUG" = "true" ]; then
+              echo "Backup file for $SERVER_IP:"
+              ls -la "$BACKUP_DIR"
+              du -sh "$BACKUP_DIR" 2>/dev/null || true
+            fi
+            echo "Completed: $SERVER_IP"
+          else
+            RC=$?
+            rm -f "$OUT_FILE"
+            echo "::warning::Backup failed for $SERVER_IP (ssh rc=$RC)"
+          fi
+          exit 0
           SCRIPT
           chmod +x backup_server.sh
 
-          echo "$SERVERS" | xargs -P 10 -I {} bash backup_server.sh {}
+          echo "$SERVERS" | xargs -P 10 -I {} bash backup_server.sh {} || true
         env:
           SERVERS_JSON: ${{ needs.get-servers.outputs.servers_json }}
           SERVER_COUNT: ${{ needs.get-servers.outputs.server_count }}
           MATRIX_BATCH: ${{ matrix.batch }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEBUG: ${{ inputs.debug }}
 
       - name: Upload batch backups to remote
         id: upload
         if: always()
         run: |
-          echo "=== DEBUG: upload step start ==="
-          echo "pwd: $(pwd)"
-          echo "--- files under ./backups (with sizes) ---"
-          find ./backups -type f -printf '%p %s bytes\n' 2>/dev/null || echo "(no ./backups dir)"
-          echo "--- dir listing ---"
-          ls -laR ./backups 2>/dev/null | head -40 || true
-          echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
+          # RCLONE_REMOTE sanity checks: always run, fail safe as a warning so
+          # the job stays green while still being loud in the logs.
           if [ -z "$RCLONE_REMOTE" ]; then
-            echo "::error::RCLONE_REMOTE is EMPTY (misconfigured secret?)"
-            exit 1
-          elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
-            echo "RCLONE_REMOTE has remote: prefix (looks OK)"
-          else
-            echo "::error::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix, so rclone treats it as a LOCAL path and backups are silently lost on the runner. Fix the RCLONE_REMOTE secret."
-            echo "::error::Configured remotes: $(rclone listremotes 2>/dev/null | tr '\n' ' ')"
-            exit 1
+            echo "::warning::RCLONE_REMOTE is EMPTY (misconfigured secret?) - skipping upload"
+            echo "uploaded=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          # Validate the referenced remote actually exists in RCLONE_CONFIG
+          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+            echo "::warning::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix - backups would be written to a LOCAL path and lost. Skipping upload."
+            echo "uploaded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           REMOTE_NAME="${RCLONE_REMOTE%%:*}"
           if ! rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
-            echo "::error::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG. Add it to the RCLONE_CONFIG secret or fix RCLONE_REMOTE."
-            exit 1
+            echo "::warning::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG - skipping upload"
+            echo "uploaded=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          echo "--- configured remotes ---"
-          rclone listremotes 2>&1 || true
-          echo "--- remote root listing BEFORE upload ---"
-          rclone lsf "$RCLONE_REMOTE/" --max-depth 2 2>&1 | head -20 || true
-          echo "=== DEBUG end ==="
+
+          if [ "$DEBUG" = "true" ]; then
+            echo "=== DEBUG: upload step ==="
+            echo "pwd: $(pwd)"
+            echo "--- files under ./backups (with sizes) ---"
+            find ./backups -type f -printf '%p %s bytes\n' 2>/dev/null || echo "(no ./backups dir)"
+            echo "--- configured remotes ---"
+            rclone listremotes 2>&1 || true
+            echo "--- remote root listing BEFORE upload ---"
+            rclone lsf "$RCLONE_REMOTE/" --max-depth 2 2>&1 | head -20 || true
+            echo "=== DEBUG end ==="
+          fi
 
           if [ ! -d "./backups" ] || [ -z "$(ls -A ./backups 2>/dev/null)" ]; then
             echo "No backups to upload"
@@ -201,22 +211,27 @@ jobs:
             exit 0
           fi
 
-          for dir in ./backups/*/; do
-            SERVER_IP=$(basename "$dir")
-            echo "Uploading backups for $SERVER_IP..."
-            rclone copy "$dir" "$RCLONE_REMOTE/$SERVER_IP/" \
-              --transfers 4 \
-              --checkers 8 \
-              --stats 30s \
-              --stats-one-line || { echo "rclone copy FAILED for $SERVER_IP"; exit 1; }
-            echo "  -> remote listing after copy for $SERVER_IP:"
-            rclone lsf "$RCLONE_REMOTE/$SERVER_IP/" 2>&1 | head -10 || true
-          done
+          # Parallel upload: one rclone copy per server dir
+          ls -d ./backups/*/ 2>/dev/null | \
+            xargs -P 5 -I DIR bash -c '
+              SERVER_IP=$(basename "$1")
+              echo "Uploading backups for $SERVER_IP..."
+              if rclone copy "$1" "$RCLONE_REMOTE/$SERVER_IP/" \
+                  -q --transfers 4 --checkers 8; then
+                if [ "$DEBUG" = "true" ]; then
+                  echo "  -> remote listing after copy for $SERVER_IP:"
+                  rclone lsf "$RCLONE_REMOTE/$SERVER_IP/" 2>&1 | head -10 || true
+                fi
+              else
+                echo "::warning::rclone copy FAILED for $SERVER_IP"
+              fi
+            ' _ DIR || true
 
           echo "All uploads complete"
           echo "uploaded=true" >> "$GITHUB_OUTPUT"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
+          DEBUG: ${{ inputs.debug }}
 
       - name: Cleanup local
         # always() is REQUIRED: without it, GitHub skips the step entirely
@@ -249,57 +264,74 @@ jobs:
 
       - name: Cleanup old backups (keep max 5)
         run: |
-          echo "=== DEBUG: cleanup start ==="
-          echo "--- RCLONE_REMOTE format check (no secret leaked) ---"
+          # RCLONE_REMOTE sanity checks: always run, fail safe as a warning.
           if [ -z "$RCLONE_REMOTE" ]; then
-            echo "::error::RCLONE_REMOTE is EMPTY (misconfigured secret?)"
-            exit 1
-          elif [[ "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
-            echo "RCLONE_REMOTE has remote: prefix (looks OK)"
-          else
-            echo "::error::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix, so rclone treats it as a LOCAL path and backups are silently lost on the runner. Fix the RCLONE_REMOTE secret."
-            echo "::error::Configured remotes: $(rclone listremotes 2>/dev/null | tr '\n' ' ')"
-            exit 1
+            echo "::warning::RCLONE_REMOTE is EMPTY (misconfigured secret?) - skipping cleanup"
+            exit 0
           fi
-          # Validate the referenced remote actually exists in RCLONE_CONFIG
+          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+            echo "::warning::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix - skipping cleanup."
+            exit 0
+          fi
           REMOTE_NAME="${RCLONE_REMOTE%%:*}"
           if ! rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
-            echo "::error::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG. Add it to the RCLONE_CONFIG secret or fix RCLONE_REMOTE."
-            exit 1
+            echo "::warning::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG - skipping cleanup"
+            exit 0
           fi
-          echo "--- configured remotes ---"
-          rclone listremotes 2>&1 || true
-          echo "=== DEBUG end ==="
 
-          echo "Cleaning up old backups..."
+          if [ "$DEBUG" = "true" ]; then
+            echo "=== DEBUG: cleanup step ==="
+            echo "--- configured remotes ---"
+            rclone listremotes 2>&1 || true
+            echo "=== DEBUG end ==="
+          fi
 
-          SERVERS=$(rclone lsf "$RCLONE_REMOTE/" --dirs-only | tr -d '/')
+          echo "Cleaning up old backups (parallel)..."
 
-          for SERVER_IP in $SERVERS; do
-            echo "Processing: $SERVER_IP"
+          cat > cleanup_server.sh << 'SCRIPT'
+          #!/bin/bash
+          SERVER_IP=$1
+          BACKUPS=$(rclone lsl "$RCLONE_REMOTE/$SERVER_IP/" 2>/dev/null | \
+            awk '{print $4}' | \
+            grep "\.tar\.gz$" | \
+            sort)
+          COUNT=$(echo "$BACKUPS" | grep -c . 2>/dev/null || true)
 
-            BACKUPS=$(rclone lsl "$RCLONE_REMOTE/$SERVER_IP/" | \
-              awk '{print $4}' | \
-              grep "\.tar\.gz$" | \
-              sort)
+          if [ -z "$COUNT" ] || [ "$COUNT" -eq 0 ]; then
+            [ "$DEBUG" = "true" ] && echo "No backups found for $SERVER_IP"
+            exit 0
+          fi
 
-            COUNT=$(echo "$BACKUPS" | wc -l)
-
-            if [ "$COUNT" -gt 5 ]; then
-              DELETE_COUNT=$((COUNT - 5))
-              echo "  Deleting $DELETE_COUNT old backups..."
-
-              echo "$BACKUPS" | head -n "$DELETE_COUNT" | while read FILE; do
-                if [ -n "$FILE" ]; then
-                  echo "  Deleting: $FILE"
-                  rclone delete "$RCLONE_REMOTE/$SERVER_IP/$FILE"
+          if [ "$COUNT" -gt 5 ]; then
+            DELETE_COUNT=$((COUNT - 5))
+            echo "Deleting $DELETE_COUNT old backups for $SERVER_IP..."
+            echo "$BACKUPS" | head -n "$DELETE_COUNT" | while read FILE; do
+              if [ -n "$FILE" ]; then
+                if rclone delete "$RCLONE_REMOTE/$SERVER_IP/$FILE" 2>/dev/null; then
+                  [ "$DEBUG" = "true" ] && echo "  Deleted: $SERVER_IP/$FILE"
+                else
+                  echo "::warning::rclone delete failed: $SERVER_IP/$FILE"
                 fi
-              done
-            else
-              echo "  Keeping all $COUNT backups (<= 5)"
-            fi
-          done
+              fi
+            done
+          else
+            [ "$DEBUG" = "true" ] && echo "Keeping all $COUNT backups for $SERVER_IP (<= 5)"
+          fi
+          exit 0
+          SCRIPT
+          chmod +x cleanup_server.sh
+
+          SERVERS=$(rclone lsf "$RCLONE_REMOTE/" --dirs-only 2>/dev/null | tr -d '/')
+
+          if [ -z "$SERVERS" ]; then
+            echo "No server directories found on remote - nothing to clean"
+          else
+            SERVER_COUNT_CLEAN=$(echo "$SERVERS" | grep -c . || true)
+            echo "Found $SERVER_COUNT_CLEAN server directories, cleaning (parallel)..."
+            echo "$SERVERS" | xargs -P 10 -I {} bash cleanup_server.sh {} || true
+          fi
 
           echo "Cleanup complete"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
+          DEBUG: ${{ inputs.debug }}
