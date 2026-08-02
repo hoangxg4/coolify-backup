@@ -7,6 +7,8 @@ GitHub Action tự động backup các Coolify servers (50+) lên rclone remote 
 - **Dynamic Matrix + Parallel**: Tự động chia servers vào 10 matrix batches chạy song song, mỗi batch backup các servers đồng thời
 - **rclone Storage**: Parallel chunked upload tới bất kỳ remote nào (S3, B2, Drive, v.v.)
 - **Auto Cleanup**: Giữ tối đa 5 bản backup/server
+- **Status Report**: Sau mỗi run, push `status/latest.md` (báo cáo đầy đủ) + `status/history.md` (lịch sử các run) lên branch `status`, kèm danh sách host lỗi và lý do
+- **Auto History Cleanup**: Tự xóa workflow runs cũ, giữ 5 run gần nhất
 - **Schedule**: Chạy mỗi 6 tiếng + manual trigger
 
 ## Secrets cần setup

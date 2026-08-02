@@ -19,7 +19,8 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write   # push the status report branch
+  actions: write    # delete old workflow runs
 
 jobs:
   get-servers:
@@ -69,6 +70,8 @@ jobs:
   backup:
     needs: get-servers
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.results.outputs.result }}
     strategy:
       matrix:
         batch: ${{ fromJSON(needs.get-servers.outputs.batch_list) }}
@@ -137,6 +140,10 @@ jobs:
           # disk (no separate scp round-trip, no remote temp file to clean up).
           OUT_FILE="$BACKUP_DIR/coolify_backup_${TIMESTAMP}.tar.gz"
 
+          # Per-server outcome records for the status report (shared path, parallel-safe O_APPEND)
+          RESULTS_FILE=/tmp/batch_results.txt
+          ERR_FILE="/tmp/backup_${SERVER_IP}.err"
+
           if timeout 300 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
             -i ~/.ssh/id_rsa "root@$SERVER_IP" "
             trap 'rm -f coolify_data.tar.gz vol_*.tar.gz' EXIT
@@ -151,7 +158,12 @@ jobs:
             for f in vol_*.tar.gz; do [ -f \"\$f\" ] && FILES=\"\$FILES \$f\"; done
             [ -n \"\$FILES\" ] || { echo \"error: nothing to back up on $SERVER_IP\" >&2; exit 1; }
             tar czf - \$FILES
-          " > "$OUT_FILE"; then
+          " > "$OUT_FILE" 2> "$ERR_FILE"; then
+            if grep -q "warn: /data/coolify missing" "$ERR_FILE" 2>/dev/null; then
+              echo "PARTIAL|$SERVER_IP|data/coolify missing, volumes only" >> "$RESULTS_FILE"
+            else
+              echo "OK|$SERVER_IP" >> "$RESULTS_FILE"
+            fi
             if [ "$DEBUG" = "true" ]; then
               echo "Backup file for $SERVER_IP:"
               ls -la "$BACKUP_DIR"
@@ -160,9 +172,14 @@ jobs:
             echo "Completed: $SERVER_IP"
           else
             RC=$?
+            REASON="backup failed (ssh rc=$RC)"
+            grep -q "nothing to back up" "$ERR_FILE" 2>/dev/null && \
+              REASON="nothing to back up (no /data/coolify, no volumes)"
             rm -f "$OUT_FILE"
             echo "::warning::Backup failed for $SERVER_IP (ssh rc=$RC)"
+            echo "FAIL|$SERVER_IP|$REASON" >> "$RESULTS_FILE"
           fi
+          rm -f "$ERR_FILE"
           exit 0
           SCRIPT
           chmod +x backup_server.sh
@@ -229,6 +246,7 @@ jobs:
                 fi
               else
                 echo "::warning::rclone copy FAILED for $SERVER_IP"
+                echo "UPLOAD_FAIL|$SERVER_IP|rclone copy failed" >> /tmp/batch_results.txt
               fi
             ' _ DIR || true
 
@@ -252,10 +270,40 @@ jobs:
           path: /tmp/backup*.log
           retention-days: 7
 
+      - name: Emit batch results JSON
+        id: results
+        if: always()
+        run: |
+          # Compact per-batch summary consumed by the report job
+          RESULTS_FILE=/tmp/batch_results.txt
+          BATCH=$MATRIX_BATCH
+          TOTAL=0; OK=0
+          FAILED_JSON='[]'; PARTIAL_JSON='[]'; UPFAIL_JSON='[]'
+          if [ -f "$RESULTS_FILE" ]; then
+            TOTAL=$(grep -cE '^(OK|FAIL|PARTIAL)\|' "$RESULTS_FILE" || true)
+            OK=$(grep -c '^OK|' "$RESULTS_FILE" || true)
+            FAILED=$(grep '^FAIL|' "$RESULTS_FILE" | \
+              awk -F'|' '{printf "{\"host\":\"%s\",\"reason\":\"%s\"},", $2, $3}' | sed 's/,$//')
+            [ -n "$FAILED" ] && FAILED_JSON="[$FAILED]"
+            PARTIAL=$(grep '^PARTIAL|' "$RESULTS_FILE" | \
+              awk -F'|' '{printf "{\"host\":\"%s\",\"reason\":\"%s\"},", $2, $3}' | sed 's/,$//')
+            [ -n "$PARTIAL" ] && PARTIAL_JSON="[$PARTIAL]"
+            UPFAIL=$(grep '^UPLOAD_FAIL|' "$RESULTS_FILE" | \
+              awk -F'|' '{printf "{\"host\":\"%s\",\"reason\":\"%s\"},", $2, $3}' | sed 's/,$//')
+            [ -n "$UPFAIL" ] && UPFAIL_JSON="[$UPFAIL]"
+          fi
+          JSON=$(printf '{"batch":%d,"total":%d,"ok":%d,"failed":%s,"partial":%s,"upload_failed":%s}' \
+            "$BATCH" "$TOTAL" "$OK" "$FAILED_JSON" "$PARTIAL_JSON" "$UPFAIL_JSON")
+          echo "result=$JSON" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_BATCH: ${{ matrix.batch }}
+
   cleanup:
     needs: [get-servers, backup]
     runs-on: ubuntu-latest
     if: always()
+    outputs:
+      summary: ${{ steps.clean.outputs.summary }}
     steps:
       - name: Setup rclone
         run: |
@@ -268,19 +316,23 @@ jobs:
           RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
 
       - name: Cleanup old backups (keep max 5)
+        id: clean
         run: |
           # RCLONE_REMOTE sanity checks: always run, fail safe as a warning.
           if [ -z "$RCLONE_REMOTE" ]; then
             echo "::warning::RCLONE_REMOTE is EMPTY (misconfigured secret?) - skipping cleanup"
+            echo "summary={\"dirs\":-1,\"deleted\":-1}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
             echo "::warning::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix - skipping cleanup."
+            echo "summary={\"dirs\":-1,\"deleted\":-1}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           REMOTE_NAME="${RCLONE_REMOTE%%:*}"
           if ! rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
             echo "::warning::rclone remote '${REMOTE_NAME}' not found in RCLONE_CONFIG - skipping cleanup"
+            echo "summary={\"dirs\":-1,\"deleted\":-1}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -292,6 +344,7 @@ jobs:
           fi
 
           echo "Cleaning up old backups (parallel)..."
+          rm -f /tmp/cleanup_del.txt
 
           cat > cleanup_server.sh << 'SCRIPT'
           #!/bin/bash
@@ -310,6 +363,7 @@ jobs:
           if [ "$COUNT" -gt 5 ]; then
             DELETE_COUNT=$((COUNT - 5))
             echo "Deleting $DELETE_COUNT old backups for $SERVER_IP..."
+            echo "$DELETE_COUNT" >> /tmp/cleanup_del.txt
             echo "$BACKUPS" | head -n "$DELETE_COUNT" | while read FILE; do
               if [ -n "$FILE" ]; then
                 if rclone delete "$RCLONE_REMOTE/$SERVER_IP/$FILE" 2>/dev/null; then
@@ -330,13 +384,213 @@ jobs:
 
           if [ -z "$SERVERS" ]; then
             echo "No server directories found on remote - nothing to clean"
+            SERVER_COUNT_CLEAN=0
           else
             SERVER_COUNT_CLEAN=$(echo "$SERVERS" | grep -c . || true)
             echo "Found $SERVER_COUNT_CLEAN server directories, cleaning (parallel)..."
             echo "$SERVERS" | xargs -P 10 -I {} bash cleanup_server.sh {} || true
           fi
 
+          DELETED_TOTAL=$(awk '{s+=$1} END {print s+0}' /tmp/cleanup_del.txt 2>/dev/null || echo 0)
+          rm -f /tmp/cleanup_del.txt
+          echo "summary={\"dirs\":$SERVER_COUNT_CLEAN,\"deleted\":$DELETED_TOTAL}" >> "$GITHUB_OUTPUT"
           echo "Cleanup complete"
         env:
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE }}
           DEBUG: ${{ inputs.debug }}
+
+  report:
+    needs: [get-servers, backup, cleanup]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Switch to status branch
+        run: |
+          # status branch holds the report files; created on first run.
+          git fetch origin status 2>/dev/null || true
+          if git rev-parse --verify origin/status >/dev/null 2>&1; then
+            git checkout -B status origin/status
+          else
+            git checkout --orphan status
+            git rm -rf . 2>/dev/null || true
+          fi
+
+      - name: Aggregate results & write status files
+        run: |
+          set -e
+          mkdir -p status
+
+          RAW='${{ needs.backup.outputs.result }}'
+          if [ -n "$RAW" ] && [ "$RAW" != "null" ]; then
+            echo "$RAW" | jq -c '[.[] | select(. != null)]' > /tmp/batch_results.json
+          else
+            echo '[]' > /tmp/batch_results.json
+          fi
+
+          BATCH_COUNT=$(jq 'length' /tmp/batch_results.json)
+          TOTAL=$(jq '[.[].total] | add // 0' /tmp/batch_results.json)
+          OK=$(jq '[.[].ok] | add // 0' /tmp/batch_results.json)
+          FAILED_ARR=$(jq -c '[.[].failed[]?]' /tmp/batch_results.json)
+          PARTIAL_ARR=$(jq -c '[.[].partial[]?]' /tmp/batch_results.json)
+          UPFAIL_ARR=$(jq -c '[.[].upload_failed[]?]' /tmp/batch_results.json)
+          FAILED_COUNT=$(echo "$FAILED_ARR" | jq 'length')
+          PARTIAL_COUNT=$(echo "$PARTIAL_ARR" | jq 'length')
+          UPFAIL_COUNT=$(echo "$UPFAIL_ARR" | jq 'length')
+
+          CLEAN_SUMMARY=$(echo '${{ needs.cleanup.outputs.summary }}' | \
+            jq -c 'if type=="object" then . else {"dirs":-1,"deleted":-1} end' 2>/dev/null || \
+            echo '{"dirs":-1,"deleted":-1}')
+          CLEAN_DIRS=$(echo "$CLEAN_SUMMARY" | jq -r '.dirs // -1')
+          CLEAN_DEL=$(echo "$CLEAN_SUMMARY" | jq -r '.deleted // -1')
+          if [ "$CLEAN_DIRS" -eq -1 ]; then
+            CLEAN_TXT="skipped (RCLONE_REMOTE misconfigured)"
+          else
+            CLEAN_TXT="$CLEAN_DIRS server dir(s) scanned, $CLEAN_DEL old backup(s) deleted"
+          fi
+
+          STARTED="$RUN_STARTED_AT"
+          START_EPOCH=$(date -d "$STARTED" +%s)
+          NOW_EPOCH=$(date +%s)
+          DUR=$((NOW_EPOCH - START_EPOCH))
+          DUR_TXT=$(printf "%dm %02ds" $((DUR/60)) $((DUR%60)))
+
+          case "$TRIGGER_NAME" in
+            schedule) TRIGGER="scheduled (every 6h)" ;;
+            push) TRIGGER="push (workflow change)" ;;
+            workflow_dispatch) TRIGGER="manual" ;;
+            *) TRIGGER="$TRIGGER_NAME" ;;
+          esac
+          if [ -n "$DEBUG_SERVER" ]; then
+            TRIGGER="$TRIGGER (DEBUG: server $DEBUG_SERVER)"
+          fi
+
+          if [ "$FAILED_COUNT" -eq 0 ] && [ "$UPFAIL_COUNT" -eq 0 ]; then
+            RESULT="SUCCESS"; RESULT_ICON=":white_check_mark:"
+          else
+            RESULT="PARTIAL"; RESULT_ICON=":warning:"
+          fi
+
+          FAILED_TABLE=$(echo "$FAILED_ARR" | jq -r '.[] | "| \(.host) | \(.reason) |"')
+          [ -z "$FAILED_TABLE" ] && FAILED_TABLE="| - | None |"
+          PARTIAL_TABLE=$(echo "$PARTIAL_ARR" | jq -r '.[] | "| \(.host) | \(.reason) |"')
+          [ -z "$PARTIAL_TABLE" ] && PARTIAL_TABLE="| - | None |"
+          UPFAIL_TABLE=$(echo "$UPFAIL_ARR" | jq -r '.[] | "| \(.host) | \(.reason) |"')
+          [ -z "$UPFAIL_TABLE" ] && UPFAIL_TABLE="| - | None |"
+
+          BATCH_TABLE=$(jq -r '.[] | "| \(.batch) | \(.total) | \(.ok) | \([.failed] | length) |"' \
+            /tmp/batch_results.json)
+
+          cat > status/latest.md << EOF
+          # Coolify Backup - Status Report
+
+          | | |
+          |---|---|
+          | **Run** | #${{ github.run_number }} (id \`$RUN_ID\`) |
+          | **Trigger** | $TRIGGER |
+          | **Started** | $STARTED |
+          | **Duration** | $DUR_TXT |
+          | **Result** | $RESULT_ICON $RESULT |
+
+          ## Summary
+
+          - **Servers**: $TOTAL (in $BATCH_COUNT batch(es))
+          - **Backup OK**: $OK
+          - **Failed**: $FAILED_COUNT
+          - **Partial (data/coolify missing, volumes only)**: $PARTIAL_COUNT
+          - **Upload failed**: $UPFAIL_COUNT
+          - **Cleanup**: $CLEAN_TXT
+
+          ## Failed hosts
+
+          | Host | Reason |
+          |---|---|
+          $FAILED_TABLE
+
+          ## Partial backups
+
+          | Host | Reason |
+          |---|---|
+          $PARTIAL_TABLE
+
+          ## Upload failures
+
+          | Host | Reason |
+          |---|---|
+          $UPFAIL_TABLE
+
+          ## Per-batch
+
+          | Batch | Total | OK | Failed |
+          |---|---|---|---|
+          $BATCH_TABLE
+          EOF
+
+          {
+            echo
+            echo "## Run #${{ github.run_number }} - $STARTED - $RESULT - $DUR_TXT - $OK/$TOTAL OK"
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "Failed: $(echo "$FAILED_ARR" | jq -r '.[] | "\(.host) (\(.reason))"' | paste -sd ', ' -)"
+            else
+              echo "Failed: none"
+            fi
+          } > /tmp/history_block.md
+          if [ -f status/history.md ]; then
+            cat /tmp/history_block.md status/history.md > /tmp/history_new.md
+            mv /tmp/history_new.md status/history.md
+          else
+            echo "# Coolify Backup - Run History" > status/history.md
+            cat /tmp/history_block.md >> status/history.md
+          fi
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_STARTED_AT: ${{ github.run_started_at }}
+          TRIGGER_NAME: ${{ github.event_name }}
+          DEBUG_SERVER: ${{ inputs.debug_server }}
+
+      - name: Commit & push status branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add status/
+          if git diff --cached --quiet; then
+            echo "No status changes"
+          else
+            git commit -m "status: run #${{ github.run_number }} ($RUN_ID)"
+            if git push origin status; then
+              echo "Pushed status files"
+            else
+              echo "Push conflict, rebasing..."
+              git fetch origin status
+              git rebase origin/status
+              git push origin status
+            fi
+          fi
+        env:
+          RUN_ID: ${{ github.run_id }}
+
+      - name: Clean old action runs (keep latest 5)
+        run: |
+          KEEP=5
+          CURRENT="$RUN_ID"
+          gh run list --limit 200 --json databaseId,status,createdAt \
+            | jq -r '.[] | select(.status=="completed") | [.createdAt,.databaseId] | @tsv' \
+            | sort -r > /tmp/runs.tsv
+          KEPT=0
+          while IFS=$'\t' read -r created id; do
+            [ "$id" = "$CURRENT" ] && continue
+            if [ "$KEPT" -lt "$KEEP" ]; then
+              KEPT=$((KEPT+1))
+              continue
+            fi
+            echo "Deleting run $id ($created)"
+            gh api -X DELETE "repos/$REPO/actions/runs/$id" 2>/dev/null \
+              || echo "::warning::failed to delete run $id"
+          done < /tmp/runs.tsv
+          echo "History cleanup done (kept latest $KEEP + current)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
