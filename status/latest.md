@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #48 (id `31245325746`) |
+| **Run** | #49 (id `31258630230`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-08-08T07:03:53Z |
-| **Duration** | 11m 27s |
+| **Started** | 2026-08-08T13:02:39Z |
+| **Duration** | 14m 18s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
@@ -31,10 +31,10 @@
 | 13.140.146.212 | backup failed (ssh rc=255) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
-| 176.31.163.96 | backup failed (ssh rc=255) |
 | 34.66.134.250 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
+| 176.31.163.96 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=255) |
 
 ## Partial backups
@@ -58,8 +58,8 @@
 | 2 | 8 | 6 | 2 |
 | 3 | 8 | 7 | 1 |
 | 4 | 8 | 6 | 2 |
-| 5 | 8 | 6 | 2 |
-| 6 | 8 | 7 | 1 |
+| 5 | 8 | 7 | 1 |
+| 6 | 8 | 5 | 3 |
 | 7 | 8 | 5 | 3 |
-| 8 | 8 | 7 | 1 |
+| 8 | 8 | 8 | 0 |
 | 9 | 3 | 2 | 1 |
