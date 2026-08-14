@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #70 (id `31734626490`) |
+| **Run** | #71 (id `31763887869`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-08-13T19:11:58Z |
-| **Duration** | 9m 32s |
+| **Started** | 2026-08-14T02:29:33Z |
+| **Duration** | 13m 21s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
@@ -22,16 +22,16 @@
 | Host | Reason |
 |---|---|
 | 75.119.149.222 | backup failed (ssh rc=124) |
-| 8.138.177.38 | backup failed (ssh rc=2) |
 | 46.225.163.149 | backup failed (ssh rc=255) |
 | 209.126.13.81 | backup failed (ssh rc=255) |
+| 8.138.177.38 | backup failed (ssh rc=124) |
 | 5.129.206.12 | backup failed (ssh rc=124) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
 | 173.212.234.212 | backup failed (ssh rc=124) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
 | 176.31.163.96 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
 | 45.77.45.79 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=255) |
 
@@ -53,8 +53,8 @@
 |---|---|---|---|
 | 0 | 8 | 8 | 0 |
 | 1 | 8 | 7 | 1 |
-| 2 | 8 | 7 | 1 |
-| 3 | 8 | 6 | 2 |
+| 2 | 8 | 8 | 0 |
+| 3 | 8 | 5 | 3 |
 | 4 | 8 | 7 | 1 |
 | 5 | 8 | 7 | 1 |
 | 6 | 8 | 5 | 3 |
