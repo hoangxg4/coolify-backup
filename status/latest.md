@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #76 (id `31870401886`) |
+| **Run** | #77 (id `31885627081`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-08-15T06:49:36Z |
-| **Duration** | 14m 55s |
+| **Started** | 2026-08-15T12:50:33Z |
+| **Duration** | 15m 11s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
@@ -29,12 +29,12 @@
 | 209.126.13.81 | backup failed (ssh rc=255) |
 | 46.225.163.149 | backup failed (ssh rc=255) |
 | 5.129.206.12 | backup failed (ssh rc=124) |
-| 52.18.184.32 | backup failed (ssh rc=255) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
+| 52.18.184.32 | backup failed (ssh rc=255) |
 | 84.247.168.168 | backup failed (ssh rc=124) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
 | 176.31.163.96 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
 | 45.77.45.79 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=255) |
 
