@@ -2,44 +2,32 @@
 
 | | |
 |---|---|
-| **Run** | #88 (id `32109006192`) |
+| **Run** | #87 (id `32089047433`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-08-18T06:55:04Z |
-| **Duration** | 22m 06s |
+| **Started** | 2026-08-18T01:40:17Z |
+| **Duration** | 361m 01s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
 
-- **Servers**: 78 (in 10 batch(es))
-- **Backup OK**: 59
-- **Failed**: 19
+- **Servers**: 40 (in 10 batch(es))
+- **Backup OK**: 33
+- **Failed**: 7
 - **Partial (data/coolify missing, volumes only)**: 0
 - **Upload failed**: 0
-- **Cleanup**: 79 server dir(s) scanned, 90 old backup(s) deleted
+- **Cleanup**: 79 server dir(s) scanned, 0 old backup(s) deleted
 
 ## Failed hosts
 
 | Host | Reason |
 |---|---|
-| 173.249.50.12 | backup failed (ssh rc=255) |
 | 202.182.120.138 | backup failed (ssh rc=255) |
-| 5.189.191.35 | backup failed (ssh rc=255) |
-| 63.181.121.248 | backup failed (ssh rc=255) |
 | 75.119.149.222 | backup failed (ssh rc=124) |
-| 203.175.10.199 | backup failed (ssh rc=255) |
-| 149.28.156.246 | backup failed (ssh rc=255) |
-| 209.126.13.81 | backup failed (ssh rc=255) |
-| 8.138.177.38 | backup failed (ssh rc=2) |
 | 46.225.163.149 | backup failed (ssh rc=255) |
 | 5.129.206.12 | backup failed (ssh rc=124) |
 | 95.217.114.51 | backup failed (ssh rc=255) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
 | 173.212.234.212 | backup failed (ssh rc=124) |
-| 176.31.163.96 | backup failed (ssh rc=255) |
-| 178.156.235.241 | backup failed (ssh rc=255) |
-| 45.77.45.79 | backup failed (ssh rc=255) |
-| 52.18.184.32 | backup failed (ssh rc=255) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
 
 ## Partial backups
 
@@ -57,13 +45,13 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 8 | 7 | 1 |
-| 1 | 8 | 7 | 1 |
-| 2 | 8 | 5 | 3 |
-| 3 | 8 | 4 | 4 |
+| 0 | 0 | 0 | 0 |
+| 1 | 8 | 6 | 2 |
+| 2 | 0 | 0 | 0 |
+| 3 | 0 | 0 | 0 |
 | 4 | 8 | 6 | 2 |
 | 5 | 8 | 7 | 1 |
 | 6 | 8 | 6 | 2 |
-| 7 | 8 | 5 | 3 |
-| 8 | 8 | 6 | 2 |
-| 9 | 6 | 6 | 0 |
+| 7 | 0 | 0 | 0 |
+| 8 | 8 | 8 | 0 |
+| 9 | 0 | 0 | 0 |
