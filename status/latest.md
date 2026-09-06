@@ -2,20 +2,20 @@
 
 | | |
 |---|---|
-| **Run** | #159 (id `34041955513`) |
+| **Run** | #160 (id `34057511544`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-09-06T15:19:45Z |
-| **Duration** | 15m 07s |
+| **Started** | 2026-09-06T20:17:11Z |
+| **Duration** | 13m 10s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
 
 - **Servers**: 90 (in 10 batch(es))
-- **Backup OK**: 57
-- **Failed**: 33
+- **Backup OK**: 56
+- **Failed**: 34
 - **Partial (data/coolify missing, volumes only)**: 0
 - **Upload failed**: 0
-- **Cleanup**: 90 server dir(s) scanned, 57 old backup(s) deleted
+- **Cleanup**: 90 server dir(s) scanned, 56 old backup(s) deleted
 
 ## Failed hosts
 
@@ -37,22 +37,23 @@
 | 84.247.168.168 | backup failed (ssh rc=124) |
 | 5.189.191.35 | backup failed (ssh rc=255) |
 | 43.153.151.229 | backup failed (ssh rc=255) |
-| 45.77.45.79 | backup failed (ssh rc=255) |
+| 35.222.248.189 | backup failed (ssh rc=255) |
+| 5.161.237.225 | backup failed (ssh rc=255) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
 | 136.116.116.216 | backup failed (ssh rc=255) |
-| 5.161.237.225 | backup failed (ssh rc=255) |
-| 35.222.248.189 | backup failed (ssh rc=255) |
+| 45.77.45.79 | backup failed (ssh rc=255) |
 | 34.56.250.117 | backup failed (ssh rc=255) |
 | 124.222.18.52 | backup failed (ssh rc=255) |
-| 151.242.2.207 | backup failed (ssh rc=255) |
-| 62.113.101.80 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=255) |
 | 176.31.163.96 | backup failed (ssh rc=255) |
 | 209.126.13.81 | backup failed (ssh rc=255) |
+| 151.242.2.207 | backup failed (ssh rc=255) |
+| 62.113.101.80 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
-| 5.129.206.12 | backup failed (ssh rc=124) |
+| 5.129.206.12 | backup failed (ssh rc=255) |
 | 185.222.242.202 | backup failed (ssh rc=124) |
 | 75.119.149.222 | backup failed (ssh rc=124) |
+| 34.159.67.4 | backup failed (ssh rc=255) |
 | 173.212.234.212 | backup failed (ssh rc=124) |
 
 ## Partial backups
@@ -79,5 +80,5 @@
 | 5 | 9 | 1 | 8 |
 | 6 | 9 | 8 | 1 |
 | 7 | 9 | 7 | 2 |
-| 8 | 9 | 9 | 0 |
+| 8 | 9 | 8 | 1 |
 | 9 | 9 | 8 | 1 |
