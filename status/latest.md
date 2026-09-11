@@ -2,59 +2,61 @@
 
 | | |
 |---|---|
-| **Run** | #177 (id `34558467204`) |
+| **Run** | #178 (id `34590724238`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-09-11T03:26:51Z |
-| **Duration** | 18m 19s |
+| **Started** | 2026-09-11T10:45:06Z |
+| **Duration** | 9m 55s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
 
-- **Servers**: 89 (in 10 batch(es))
-- **Backup OK**: 52
-- **Failed**: 36
+- **Servers**: 92 (in 10 batch(es))
+- **Backup OK**: 53
+- **Failed**: 38
 - **Partial (data/coolify missing, volumes only)**: 1
-- **Upload failed**: 3
-- **Cleanup**: 92 server dir(s) scanned, 49 old backup(s) deleted
+- **Upload failed**: 0
+- **Cleanup**: 93 server dir(s) scanned, 53 old backup(s) deleted
 
 ## Failed hosts
 
 | Host | Reason |
 |---|---|
+| 150.95.24.202 | backup failed (ssh rc=255) |
+| 157.180.127.26 | backup failed (ssh rc=124) |
 | 75.119.149.222 | backup failed (ssh rc=124) |
+| 46.62.208.129 | backup failed (ssh rc=124) |
 | 34.159.67.4 | backup failed (ssh rc=255) |
 | 35.237.115.96 | backup failed (ssh rc=255) |
-| 173.212.234.212 | backup failed (ssh rc=124) |
-| 94.237.108.155 | backup failed (ssh rc=255) |
-| 34.56.250.117 | backup failed (ssh rc=255) |
 | 5.129.206.12 | backup failed (ssh rc=124) |
-| 35.254.77.18 | backup failed (ssh rc=255) |
-| 141.136.44.86 | backup failed (ssh rc=255) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
+| 34.56.250.117 | backup failed (ssh rc=255) |
+| 94.237.108.155 | backup failed (ssh rc=255) |
 | 124.174.76.213 | backup failed (ssh rc=2) |
-| 158.220.121.219 | backup failed (ssh rc=124) |
+| 173.212.234.212 | backup failed (ssh rc=124) |
 | 107.175.31.141 | backup failed (ssh rc=255) |
-| 5.189.191.35 | backup failed (ssh rc=255) |
-| 46.225.163.149 | backup failed (ssh rc=255) |
 | 157.90.10.4 | backup failed (ssh rc=255) |
-| 43.153.151.229 | backup failed (ssh rc=255) |
 | 95.217.114.51 | backup failed (ssh rc=255) |
-| 62.113.101.80 | backup failed (ssh rc=255) |
-| 173.249.50.12 | backup failed (ssh rc=255) |
-| 209.126.13.81 | backup failed (ssh rc=255) |
-| 82.165.41.87 | backup failed (ssh rc=255) |
+| 35.254.77.18 | backup failed (ssh rc=255) |
+| 158.220.121.219 | backup failed (ssh rc=124) |
+| 5.189.191.35 | backup failed (ssh rc=255) |
+| 43.153.151.229 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
 | 202.182.120.138 | backup failed (ssh rc=255) |
-| 65.108.63.189 | backup failed (ssh rc=255) |
+| 209.126.13.81 | backup failed (ssh rc=255) |
+| 62.113.101.80 | backup failed (ssh rc=255) |
 | 151.242.2.207 | backup failed (ssh rc=255) |
 | 66.63.168.31 | backup failed (ssh rc=255) |
+| 46.225.163.149 | backup failed (ssh rc=255) |
+| 173.249.50.12 | backup failed (ssh rc=255) |
+| 35.222.248.189 | backup failed (ssh rc=255) |
+| 82.165.41.87 | backup failed (ssh rc=255) |
+| 65.108.63.189 | backup failed (ssh rc=255) |
+| 176.31.163.96 | backup failed (ssh rc=255) |
 | 43.139.230.5 | backup failed (ssh rc=255) |
 | 5.161.237.225 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
-| 149.28.156.246 | backup failed (ssh rc=255) |
-| 35.222.248.189 | backup failed (ssh rc=255) |
-| 45.77.45.79 | backup failed (ssh rc=255) |
-| 176.31.163.96 | backup failed (ssh rc=255) |
 | 52.18.184.32 | backup failed (ssh rc=255) |
+| 149.28.156.246 | backup failed (ssh rc=255) |
+| 45.77.45.79 | backup failed (ssh rc=255) |
 | 124.222.18.52 | backup failed (ssh rc=255) |
 | 84.247.168.168 | backup failed (ssh rc=124) |
 
@@ -62,27 +64,25 @@
 
 | Host | Reason |
 |---|---|
-| 150.95.24.202 | data/coolify missing, volumes only |
+| 185.222.242.202 | data/coolify missing, volumes only |
 
 ## Upload failures
 
 | Host | Reason |
 |---|---|
-| 62.146.170.58 | rclone copy failed |
-| 176.9.89.217 | rclone copy failed |
-| 62.238.41.18 | rclone copy failed |
+| - | None |
 
 ## Per-batch
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 9 | 8 | 0 |
-| 1 | 9 | 8 | 1 |
-| 2 | 9 | 6 | 3 |
-| 3 | 9 | 6 | 3 |
-| 4 | 9 | 4 | 5 |
-| 5 | 9 | 2 | 7 |
-| 6 | 9 | 3 | 6 |
-| 7 | 9 | 3 | 6 |
-| 8 | 9 | 7 | 2 |
-| 9 | 8 | 5 | 3 |
+| 0 | 10 | 8 | 2 |
+| 1 | 10 | 8 | 2 |
+| 2 | 10 | 6 | 3 |
+| 3 | 10 | 6 | 4 |
+| 4 | 10 | 5 | 5 |
+| 5 | 10 | 3 | 7 |
+| 6 | 10 | 3 | 7 |
+| 7 | 10 | 7 | 3 |
+| 8 | 10 | 6 | 4 |
+| 9 | 2 | 1 | 1 |
