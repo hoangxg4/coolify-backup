@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #186 (id `34753912913`) |
+| **Run** | #187 (id `34766506549`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-09-13T11:14:18Z |
-| **Duration** | 10m 13s |
+| **Started** | 2026-09-13T15:44:35Z |
+| **Duration** | 10m 10s |
 | **Result** | :warning: PARTIAL |
 
 ## Summary
@@ -24,39 +24,39 @@
 | 150.95.24.202 | backup failed (ssh rc=255) |
 | 157.180.127.26 | backup failed (ssh rc=124) |
 | 146.56.178.128 | backup failed (ssh rc=255) |
-| 5.129.206.12 | backup failed (ssh rc=255) |
 | 16.16.154.189 | backup failed (ssh rc=255) |
 | 75.119.149.222 | backup failed (ssh rc=124) |
 | 46.62.208.129 | backup failed (ssh rc=124) |
-| 34.159.67.4 | backup failed (ssh rc=255) |
-| 94.237.108.155 | backup failed (ssh rc=255) |
+| 5.129.206.12 | backup failed (ssh rc=255) |
 | 35.237.115.96 | backup failed (ssh rc=255) |
+| 94.237.108.155 | backup failed (ssh rc=255) |
+| 34.159.67.4 | backup failed (ssh rc=255) |
 | 124.174.76.213 | backup failed (ssh rc=2) |
 | 173.212.234.212 | backup failed (ssh rc=124) |
 | 158.220.121.219 | backup failed (ssh rc=255) |
 | 157.90.10.4 | backup failed (ssh rc=255) |
-| 43.136.166.221 | backup failed (ssh rc=255) |
 | 35.254.77.18 | backup failed (ssh rc=255) |
+| 43.136.166.221 | backup failed (ssh rc=255) |
 | 34.56.250.117 | backup failed (ssh rc=255) |
 | 107.175.31.141 | backup failed (ssh rc=255) |
-| 43.153.151.229 | backup failed (ssh rc=255) |
 | 5.189.191.35 | backup failed (ssh rc=255) |
-| 136.116.116.216 | backup failed (ssh rc=255) |
-| 95.217.114.51 | backup failed (ssh rc=255) |
-| 65.108.63.189 | backup failed (ssh rc=255) |
+| 43.153.151.229 | backup failed (ssh rc=255) |
 | 151.242.2.207 | backup failed (ssh rc=255) |
-| 209.126.13.81 | backup failed (ssh rc=255) |
+| 95.217.114.51 | backup failed (ssh rc=255) |
+| 62.113.101.80 | backup failed (ssh rc=255) |
+| 136.116.116.216 | backup failed (ssh rc=255) |
+| 202.182.120.138 | backup failed (ssh rc=255) |
 | 66.63.168.31 | backup failed (ssh rc=255) |
 | 46.225.163.149 | backup failed (ssh rc=255) |
-| 202.182.120.138 | backup failed (ssh rc=255) |
 | 82.165.41.87 | backup failed (ssh rc=255) |
+| 209.126.13.81 | backup failed (ssh rc=255) |
+| 65.108.63.189 | backup failed (ssh rc=255) |
 | 173.249.50.12 | backup failed (ssh rc=255) |
 | 35.222.248.189 | backup failed (ssh rc=255) |
-| 62.113.101.80 | backup failed (ssh rc=255) |
 | 43.139.230.5 | backup failed (ssh rc=255) |
+| 176.31.163.96 | backup failed (ssh rc=255) |
 | 149.28.156.246 | backup failed (ssh rc=255) |
 | 5.161.237.225 | backup failed (ssh rc=255) |
-| 176.31.163.96 | backup failed (ssh rc=255) |
 | 178.156.235.241 | backup failed (ssh rc=255) |
 | 45.77.45.79 | backup failed (ssh rc=255) |
 | 124.222.18.52 | backup failed (ssh rc=255) |
@@ -80,12 +80,12 @@
 | Batch | Total | OK | Failed |
 |---|---|---|---|
 | 0 | 10 | 8 | 2 |
-| 1 | 10 | 5 | 5 |
-| 2 | 10 | 9 | 1 |
+| 1 | 10 | 6 | 4 |
+| 2 | 10 | 8 | 2 |
 | 3 | 10 | 6 | 4 |
 | 4 | 10 | 5 | 5 |
 | 5 | 10 | 2 | 8 |
 | 6 | 10 | 3 | 7 |
-| 7 | 10 | 5 | 5 |
-| 8 | 10 | 7 | 3 |
+| 7 | 10 | 6 | 4 |
+| 8 | 10 | 6 | 4 |
 | 9 | 5 | 4 | 1 |
