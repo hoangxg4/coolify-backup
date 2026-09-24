@@ -1,3 +1,5 @@
 .omo/
 .codegraph/
 *.log
+.hive/
+.hive2/
