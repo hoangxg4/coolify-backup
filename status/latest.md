@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #229 (id `36008483977`) |
-| **Trigger** | push (workflow change) |
-| **Started** | 2026-09-24T13:50:41Z |
-| **Duration** | 0m 42s |
+| **Run** | #230 (id `36028828917`) |
+| **Trigger** | scheduled (every 6h) |
+| **Started** | 2026-09-24T16:38:56Z |
+| **Duration** | 1m 10s |
 | **Result** | :white_check_mark: SUCCESS |
 | **API resource mapping** | unknown |
 
