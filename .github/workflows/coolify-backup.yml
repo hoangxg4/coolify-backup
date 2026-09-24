@@ -29,30 +29,107 @@ jobs:
       servers_json: ${{ steps.fetch.outputs.servers_json }}
       server_count: ${{ steps.fetch.outputs.server_count }}
       batch_list: ${{ steps.fetch.outputs.batch_list }}
+      resources_json: ${{ steps.fetch.outputs.resources_json }}
+      api_ok: ${{ steps.fetch.outputs.api_ok }}
     steps:
       - name: Fetch server list from Coolify API
         id: fetch
         run: |
+          # --- fetch-step:begin ---
           # Number of parallel matrix batches (tune as needed)
           MATRIX_BATCHES=10
+          API_OK=true
+          RESPONSE=''
+          SERVERS_VALID=false
+
+          # Header via stdin (@-) — keeps bearer token off process argv/ps
+          coolify_curl() {
+            printf 'Authorization: Bearer %s\n' "$COOLIFY_API_TOKEN" \
+              | curl -sS --max-time 30 --retry 2 -H @- "$@"
+          }
+
+          RESPONSE=$(coolify_curl "$COOLIFY_API_URL/servers" || true)
+          if echo "$RESPONSE" | jq -e 'type=="array"' >/dev/null 2>&1; then
+            SERVERS_VALID=true
+          fi
 
           if [ -n "$DEBUG_SERVER" ]; then
             # DEBUG MODE: backup only the single server provided via workflow_dispatch
             MATRIX_BATCHES=1
-            SERVERS_JSON=$(echo "$DEBUG_SERVER" | jq -R -c '[.]')
             SERVER_COUNT=1
+            if [ "$SERVERS_VALID" = true ]; then
+              SERVERS_JSON=$(echo "$RESPONSE" | jq -c --arg ip "$DEBUG_SERVER" '[.[].ip | select(.==$ip)]')
+              if [ "$SERVERS_JSON" = "[]" ]; then
+                SERVERS_JSON=$(printf '%s' "$DEBUG_SERVER" | jq -R -c '[.]')
+              fi
+            else
+              SERVERS_JSON=$(printf '%s' "$DEBUG_SERVER" | jq -R -c '[.]')
+              API_OK=false
+              echo "::warning::/servers fetch failed in debug mode - full-backup fallback"
+            fi
           else
-            RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
-              "$COOLIFY_API_URL/servers")
-
+            if [ "$SERVERS_VALID" != true ]; then
+              echo "::error::Coolify /servers returned invalid or non-array response"
+              exit 1
+            fi
             SERVERS_JSON=$(echo "$RESPONSE" | jq -c '[.[].ip]')
             SERVER_COUNT=$(echo "$SERVERS_JSON" | jq 'length')
-
             if [ "$SERVER_COUNT" -eq 0 ]; then
               echo "::warning::No servers returned by API. Check COOLIFY_API_URL and COOLIFY_API_TOKEN."
               SERVERS_JSON='[]'
               SERVER_COUNT=0
             fi
+          fi
+
+          # Build per-IP resource map via GET /servers/{uuid}/resources (N+1, soft-fail)
+          RESOURCES_JSON='{}'
+          PAIRS=''
+          if [ "$API_OK" = true ] && [ "$SERVERS_VALID" = true ]; then
+            PAIRS=$(echo "$RESPONSE" | jq -c '[.[] | {uuid, ip}]' 2>/dev/null || true)
+            if ! echo "$PAIRS" | jq -e 'type=="array"' >/dev/null 2>&1; then
+              PAIRS=''
+              API_OK=false
+            fi
+          fi
+          if [ "$API_OK" = true ] && [ -n "$PAIRS" ]; then
+            if [ -n "$DEBUG_SERVER" ]; then
+              PAIRS=$(echo "$PAIRS" | jq -c --arg ip "$DEBUG_SERVER" '[.[] | select(.ip==$ip)]' 2>/dev/null || echo '[]')
+            fi
+            while IFS=' ' read -r uuid ip; do
+              if [ -z "$uuid" ] || [ -z "$ip" ]; then
+                continue
+              fi
+              RES=$(coolify_curl "$COOLIFY_API_URL/servers/$uuid/resources" || true)
+              if ! echo "$RES" | jq -e 'type=="array" and all(.[]; type=="object")' >/dev/null 2>&1; then
+                echo "::warning::resource mapping failed for $ip - full-backup fallback for all servers"
+                API_OK=false
+                RESOURCES_JSON='{}'
+                break
+              fi
+              if ! KINDS=$(echo "$RES" | jq -c '{
+                applications: [.[] | select(.type=="application") | .uuid],
+                services:     [.[] | select(.type=="service")     | .uuid],
+                databases:    [.[] | select(.type!="application" and .type!="service") | .uuid]
+              }'); then
+                echo "::warning::resource mapping parse failed for $ip - full-backup fallback"
+                API_OK=false
+                RESOURCES_JSON='{}'
+                break
+              fi
+              if ! RESOURCES_JSON=$(jq -c --arg ip "$ip" --argjson k "$KINDS" '.[$ip]=$k' <<<"$RESOURCES_JSON"); then
+                echo "::warning::resource map merge failed for $ip - full-backup fallback"
+                API_OK=false
+                RESOURCES_JSON='{}'
+                break
+              fi
+            done < <(jq -r '.[] | "\(.uuid) \(.ip)"' <<<"$PAIRS" 2>/dev/null || true)
+          fi
+          if [ "$API_OK" = true ] && [ "${SERVER_COUNT:-0}" -gt 0 ] && [ "$RESOURCES_JSON" = "{}" ]; then
+            # Servers exist but map is empty (e.g. debug IP not in /servers) - don't claim filtered mode
+            API_OK=false
+          fi
+          if [ "$API_OK" = false ]; then
+            RESOURCES_JSON='{}'
           fi
 
           # Dynamic matrix: batches, servers are divided evenly later
@@ -61,7 +138,10 @@ jobs:
           echo "servers_json=$SERVERS_JSON" >> $GITHUB_OUTPUT
           echo "server_count=$SERVER_COUNT" >> $GITHUB_OUTPUT
           echo "batch_list=$BATCH_LIST" >> $GITHUB_OUTPUT
-          echo "Found $SERVER_COUNT servers, running $MATRIX_BATCHES parallel batches"
+          echo "resources_json=$RESOURCES_JSON" >> $GITHUB_OUTPUT
+          echo "api_ok=$API_OK" >> $GITHUB_OUTPUT
+          echo "Found $SERVER_COUNT servers, running $MATRIX_BATCHES parallel batches (api_ok=$API_OK)"
+          # --- fetch-step:end ---
         env:
           COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
@@ -121,10 +201,16 @@ jobs:
           fi
 
           echo "Backing up servers: $SERVERS"
+          if [ -z "${RESOURCES_JSON:-}" ]; then RESOURCES_JSON='{}'; fi
 
           cat > backup_server.sh << 'SCRIPT'
           #!/bin/bash
           SERVER_IP=$1
+          # Reject shell-metacharacters in API-supplied address (IPv4/IPv6/hostname OK)
+          if [ -z "$SERVER_IP" ] || printf '%s' "$SERVER_IP" | grep -qE '[^0-9A-Za-z.:_-]'; then
+            echo "FAIL|$SERVER_IP|invalid server address" >> /tmp/batch_results.txt
+            exit 0
+          fi
           BACKUP_DIR="./backups/$SERVER_IP"
           mkdir -p "$BACKUP_DIR"
 
@@ -134,30 +220,115 @@ jobs:
 
           echo "Starting backup: $SERVER_IP"
 
-          # Single SSH connection: build + stream the tarball directly to local
-          # disk (no separate scp round-trip, no remote temp file to clean up).
+          # Single SSH connection: stream the remote script on stdin, tarball back on stdout.
           OUT_FILE="$BACKUP_DIR/coolify_backup_${TIMESTAMP}.tar.gz"
 
           # Per-server outcome records for the status report (shared path, parallel-safe O_APPEND)
           RESULTS_FILE=/tmp/batch_results.txt
           ERR_FILE="/tmp/backup_${SERVER_IP}.err"
 
-          if timeout 300 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
-            -i ~/.ssh/id_rsa "root@$SERVER_IP" "
-            trap 'rm -f coolify_data.tar.gz vol_*.tar.gz' EXIT
-            cd /tmp || exit 1
-            tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null || \
-              echo \"warn: /data/coolify missing or unreadable on $SERVER_IP\" >&2
-            (docker volume ls -q 2>/dev/null | xargs -P 5 -I {} \
+          if [ -z "${RESOURCES_JSON:-}" ]; then RESOURCES_JSON='{}'; fi
+          ENTRY=$(jq -c --arg ip "$SERVER_IP" '.[$ip] // empty' <<<"$RESOURCES_JSON" 2>/dev/null || true)
+          if [ -n "$ENTRY" ]; then
+            MODE=filtered
+          else
+            MODE=fallback
+            echo "::warning::No resource mapping for $SERVER_IP - full backup fallback"
+          fi
+          ENTRY_B64=$(printf '%s' "$ENTRY" | base64 -w0 2>/dev/null || printf '%s' "$ENTRY" | base64)
+
+          REMOTE_SCRIPT=$(mktemp)
+          cat > "$REMOTE_SCRIPT" << 'REMOTE'
+          cd /tmp || exit 1
+          SCRATCH=$(mktemp -d)
+          trap 'rm -rf "$SCRATCH"; rm -f coolify_data.tar.gz vol_*.tar.gz vol_list.txt' EXIT
+
+          backup_volumes_from_list() {
+            [ -s vol_list.txt ] || return 0
+            xargs -P 5 -I {} docker run --rm -v {}:/data -v /tmp:/backup alpine \
+              tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null < vol_list.txt
+            return 0
+          }
+          backup_volumes_all() {
+            docker volume ls -q 2>/dev/null | xargs -P 5 -I {} \
               docker run --rm -v {}:/data -v /tmp:/backup alpine \
-              tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null)
-            FILES=\"\"
-            [ -f coolify_data.tar.gz ] && FILES=\"\$FILES coolify_data.tar.gz\"
-            for f in vol_*.tar.gz; do [ -f \"\$f\" ] && FILES=\"\$FILES \$f\"; done
-            [ -n \"\$FILES\" ] || { echo \"error: nothing to back up on $SERVER_IP\" >&2; exit 1; }
-            tar czf - \$FILES
-          " > "$OUT_FILE" 2> "$ERR_FILE"; then
-            if grep -q "warn: /data/coolify missing" "$ERR_FILE" 2>/dev/null; then
+              tar czf /backup/vol_{}.tar.gz -C / data 2>/dev/null
+            return 0
+          }
+          build_volumes_filtered() {
+            : > vol_list.txt
+            EXISTING_VOLS="$SCRATCH/existing_vols"
+            docker volume ls -q 2>/dev/null > "$EXISTING_VOLS" || true
+            UUID_FILE="$SCRATCH/uuid_filter"
+            jq -r '.applications[]?, .databases[]?, .services[]?' <<<"$DEC" > "$UUID_FILE" 2>/dev/null || true
+            if [ -s "$UUID_FILE" ]; then
+              grep -F -f "$UUID_FILE" "$EXISTING_VOLS" >> vol_list.txt || true
+            fi
+            docker ps -aq --filter "label=coolify.managed=true" 2>/dev/null | \
+              xargs -r docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}' 2>/dev/null \
+              >> vol_list.txt || true
+            # core volumes ONLY if they already exist (never auto-create via docker run -v)
+            printf '%s\n' coolify-db coolify-redis > "$SCRATCH/core_vols"
+            grep -Fx -f "$SCRATCH/core_vols" "$EXISTING_VOLS" >> vol_list.txt || true
+            sort -u vol_list.txt -o vol_list.txt
+          }
+
+          if [ "$MODE" = "filtered" ]; then
+            DEC=$(printf '%s' "$ENTRY_B64" | base64 -d 2>/dev/null || echo '{}')
+            INCLUDE=()
+            for d in source ssh backups images; do
+              [ -d "/data/coolify/$d" ] && INCLUDE+=("data/coolify/$d")
+            done
+            for kind in applications databases services; do
+              while IFS= read -r u; do
+                [ -n "$u" ] || continue
+                [ -d "/data/coolify/$kind/$u" ] && INCLUDE+=("data/coolify/$kind/$u")
+              done < <(jq -r --arg k "$kind" '.[$k][]?' <<<"$DEC" 2>/dev/null || true)
+            done
+            if [ ${#INCLUDE[@]} -gt 0 ]; then
+              tar czf coolify_data.tar.gz -C / "${INCLUDE[@]}" 2>/dev/null || \
+                echo "warn: /data/coolify missing or unreadable on $SRV_IP" >&2
+            else
+              # Distinct from "missing" so report reason stays accurate when volumes still succeed
+              echo "warn: no matching resource paths on $SRV_IP" >&2
+            fi
+            build_volumes_filtered
+            backup_volumes_from_list
+          else
+            tar czf coolify_data.tar.gz -C / data/coolify 2>/dev/null || \
+              echo "warn: /data/coolify missing or unreadable on $SRV_IP" >&2
+            backup_volumes_all
+          fi
+
+          FILES=""
+          [ -f coolify_data.tar.gz ] && FILES="$FILES coolify_data.tar.gz"
+          for f in vol_*.tar.gz; do [ -f "$f" ] && FILES="$FILES $f"; done
+          [ -n "$FILES" ] || {
+            if [ "$MODE" = "filtered" ]; then exit 42; fi
+            echo "error: nothing to back up on $SRV_IP" >&2
+            exit 1
+          }
+          tar czf - $FILES
+          REMOTE
+
+          if timeout 300 ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
+            -i ~/.ssh/id_rsa "root@$SERVER_IP" \
+            "MODE='$MODE' ENTRY_B64='$ENTRY_B64' SRV_IP='$SERVER_IP' bash -s" \
+            < "$REMOTE_SCRIPT" > "$OUT_FILE" 2> "$ERR_FILE"; then
+            RC=0
+          else
+            RC=$?
+          fi
+          rm -f "$REMOTE_SCRIPT"
+
+          if [ "$RC" -eq 0 ]; then
+            if [ "$MODE" = "fallback" ]; then
+              # Approved Q3: fallback successes are PARTIAL, never OK
+              echo "PARTIAL|$SERVER_IP|no resource mapping: full backup" >> "$RESULTS_FILE"
+              echo "::warning::$SERVER_IP backed up in FULL fallback mode (no resource mapping)"
+            elif grep -q "warn: no matching resource paths" "$ERR_FILE" 2>/dev/null; then
+              echo "PARTIAL|$SERVER_IP|no matching resource paths, volumes only" >> "$RESULTS_FILE"
+            elif grep -q "warn: /data/coolify missing" "$ERR_FILE" 2>/dev/null; then
               echo "PARTIAL|$SERVER_IP|data/coolify missing, volumes only" >> "$RESULTS_FILE"
             else
               echo "OK|$SERVER_IP" >> "$RESULTS_FILE"
@@ -167,9 +338,12 @@ jobs:
               ls -la "$BACKUP_DIR"
               du -sh "$BACKUP_DIR" 2>/dev/null || true
             fi
-            echo "Completed: $SERVER_IP"
+            echo "Completed: $SERVER_IP (mode=$MODE)"
+          elif [ "$RC" -eq 42 ]; then
+            rm -f "$OUT_FILE"
+            echo "::warning::Nothing matched on $SERVER_IP (no core dirs, no resource data, no volumes)"
+            echo "PARTIAL|$SERVER_IP|no matching resource data on server" >> "$RESULTS_FILE"
           else
-            RC=$?
             REASON="backup failed (ssh rc=$RC)"
             grep -q "nothing to back up" "$ERR_FILE" 2>/dev/null && \
               REASON="nothing to back up (no /data/coolify, no volumes)"
@@ -186,6 +360,7 @@ jobs:
         env:
           SERVERS_JSON: ${{ needs.get-servers.outputs.servers_json }}
           SERVER_COUNT: ${{ needs.get-servers.outputs.server_count }}
+          RESOURCES_JSON: ${{ needs.get-servers.outputs.resources_json }}
           MATRIX_BATCH: ${{ matrix.batch }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEBUG: ${{ inputs.debug }}
@@ -471,6 +646,12 @@ jobs:
             CLEAN_TXT="$CLEAN_DIRS server dir(s) scanned, $CLEAN_DEL old backup(s) deleted"
           fi
 
+          case "${API_OK:-}" in
+            true)  API_STATUS="OK (resource-filtered)" ;;
+            false) API_STATUS="unavailable (full-backup fallback)" ;;
+            *)     API_STATUS="unknown" ;;
+          esac
+
           STARTED="$RUN_STARTED_AT"
           if [ -z "$STARTED" ] || [ "$STARTED" = "null" ]; then
             STARTED=$(gh run view "$RUN_ID" --json createdAt --jq '.createdAt' 2>/dev/null || true)
@@ -521,13 +702,14 @@ jobs:
           | **Started** | $STARTED |
           | **Duration** | $DUR_TXT |
           | **Result** | $RESULT_ICON $RESULT |
+          | **API resource mapping** | $API_STATUS |
 
           ## Summary
 
           - **Servers**: $TOTAL (in $BATCH_COUNT batch(es))
           - **Backup OK**: $OK
           - **Failed**: $FAILED_COUNT
-          - **Partial (data/coolify missing, volumes only)**: $PARTIAL_COUNT
+          - **Partial (fallback / missing data)**: $PARTIAL_COUNT
           - **Upload failed**: $UPFAIL_COUNT
           - **Cleanup**: $CLEAN_TXT
 
@@ -584,6 +766,7 @@ jobs:
           RUN_STARTED_AT: ${{ github.run_started_at }}
           TRIGGER_NAME: ${{ github.event_name }}
           DEBUG_SERVER: ${{ inputs.debug_server }}
+          API_OK: ${{ needs.get-servers.outputs.api_ok }}
           GH_TOKEN: ${{ github.token }}
 
       - name: Commit & push status branch

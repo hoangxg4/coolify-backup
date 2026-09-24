@@ -16,7 +16,7 @@ GitHub Action tự động backup các Coolify servers (50+) lên rclone remote 
 | Secret | Mô tả | Ví dụ |
 |--------|-------|-------|
 | `COOLIFY_API_URL` | Full API URL | `https://coolify.example.com/api/v1` |
-| `COOLIFY_API_TOKEN` | API bearer token | `xxxxxxxxxxxx` |
+| `COOLIFY_API_TOKEN` | API bearer token (cần ability `read`: token read hoặc root) | `xxxxxxxxxxxx` |
 | `SSH_PRIVATE_KEY` | Full private key content | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `RCLONE_CONFIG` | Full rclone config file content | `[myremote]\ntype = s3\nprovider = ...` |
 | `RCLONE_REMOTE` | Remote name + base path | `myremote:coolify-backups` |
@@ -57,9 +57,17 @@ GitHub Action tự động backup các Coolify servers (50+) lên rclone remote 
 
 ## Backup Contents
 
-Mỗi backup gồm:
-- `/data/coolify` directory
-- Tất cả Docker volumes (named volumes)
+Backup chỉ gồm dữ liệu của các resources đã đăng ký trong Coolify:
+
+- `/data/coolify`: thư mục core (`source/`, `ssh/`, `backups/`, `images/`, nếu tồn tại) +
+  `applications/<uuid>/`, `databases/<uuid>/`, `services/<uuid>/` theo UUID trả về từ
+  `GET /api/v1/servers/{uuid}/resources`
+- Docker volumes: volume có tên chứa resource UUID ∪ volume gắn bởi container có label
+  `coolify.managed=true` ∪ core volumes `coolify-db`, `coolify-redis` (chỉ khi đã tồn tại, dedupe)
+
+**Fallback**: nếu không lấy được resource map từ API (lỗi/rate-limit) → backup toàn bộ
+như hành vi cũ, ghi `PARTIAL (no resource mapping: full backup)` trong status report và
+hiển thị `API resource mapping: unavailable`.
 
 ## Performance
 
