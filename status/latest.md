@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #230 (id `36028828917`) |
+| **Run** | #231 (id `36060152684`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-09-24T16:38:56Z |
-| **Duration** | 1m 10s |
+| **Started** | 2026-09-24T21:14:15Z |
+| **Duration** | 0m 38s |
 | **Result** | :white_check_mark: SUCCESS |
 | **API resource mapping** | unknown |
 
