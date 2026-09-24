@@ -2,18 +2,19 @@
 
 | | |
 |---|---|
-| **Run** | #228 (id `35991990362`) |
-| **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-09-24T11:15:44Z |
-| **Duration** | 0m 36s |
+| **Run** | #229 (id `36008483977`) |
+| **Trigger** | push (workflow change) |
+| **Started** | 2026-09-24T13:50:41Z |
+| **Duration** | 0m 42s |
 | **Result** | :white_check_mark: SUCCESS |
+| **API resource mapping** | unknown |
 
 ## Summary
 
 - **Servers**: 0 (in 0 batch(es))
 - **Backup OK**: 0
 - **Failed**: 0
-- **Partial (data/coolify missing, volumes only)**: 0
+- **Partial (fallback / missing data)**: 0
 - **Upload failed**: 0
 - **Cleanup**: 93 server dir(s) scanned, 0 old backup(s) deleted
 
