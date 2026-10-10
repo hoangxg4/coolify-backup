@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #284 (id `38050140197`) |
-| **Trigger** | manual |
-| **Started** | 2026-10-10T11:55:52Z |
-| **Duration** | 5m 01s |
+| **Run** | #285 (id `38050502552`) |
+| **Trigger** | scheduled (every 6h) |
+| **Started** | 2026-10-10T12:02:04Z |
+| **Duration** | 5m 03s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -22,9 +22,9 @@
 
 | Host | Reason |
 |---|---|
-| 158.247.234.240 | backup failed (ssh rc=255) |
 | 118.25.191.55 | backup failed (ssh rc=255) |
 | 203.86.236.158 | backup failed (ssh rc=255) |
+| 158.247.234.240 | backup failed (ssh rc=255) |
 | 66.253.112.60 | backup failed (ssh rc=255) |
 | 154.12.252.216 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
@@ -50,11 +50,11 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 3 | 1 | 1 |
-| 1 | 3 | 1 | 2 |
+| 0 | 3 | 0 | 3 |
+| 1 | 3 | 2 | 0 |
 | 2 | 3 | 2 | 1 |
-| 3 | 3 | 3 | 0 |
-| 4 | 3 | 1 | 1 |
+| 3 | 3 | 2 | 0 |
+| 4 | 3 | 2 | 1 |
 | 5 | 3 | 1 | 0 |
 | 6 | 3 | 3 | 0 |
 | 7 | 3 | 1 | 1 |
