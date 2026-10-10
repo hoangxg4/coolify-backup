@@ -376,7 +376,7 @@ jobs:
             echo "uploaded=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_-]+: ]]; then
             echo "::warning::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix - backups would be written to a LOCAL path and lost. Skipping upload."
             echo "uploaded=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -510,7 +510,7 @@ jobs:
             echo "summary={\"dirs\":-1,\"deleted\":-1}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_]+: ]]; then
+          if [[ ! "$RCLONE_REMOTE" =~ ^[A-Za-z0-9_-]+: ]]; then
             echo "::warning::RCLONE_REMOTE must be '<remote-name>:<base-path>' (e.g. 'hf:coolify-backups'). Current value has NO 'remote:' prefix - skipping cleanup."
             echo "summary={\"dirs\":-1,\"deleted\":-1}" >> "$GITHUB_OUTPUT"
             exit 0
