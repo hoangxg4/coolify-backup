@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #313 (id `39093618828`) |
+| **Run** | #314 (id `39119610066`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-10-18T03:26:19Z |
-| **Duration** | 5m 53s |
+| **Started** | 2026-10-18T10:31:45Z |
+| **Duration** | 5m 23s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -26,8 +26,8 @@
 | 203.86.236.158 | backup failed (ssh rc=255) |
 | 62.146.170.58 | backup failed (ssh rc=255) |
 | 130.94.117.183 | backup failed (ssh rc=255) |
-| 154.12.252.216 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
+| 154.12.252.216 | backup failed (ssh rc=255) |
 | 66.253.112.60 | backup failed (ssh rc=255) |
 
 ## Partial backups
@@ -37,10 +37,10 @@
 | 47.115.201.168 | no matching resource data on server |
 | 124.174.76.213 | no matching resource data on server |
 | 101.34.89.52 | no matching resource data on server |
-| 23.95.86.139 | no matching resource data on server |
-| 106.13.5.116 | no matching resource data on server |
-| 194.233.70.145 | no matching resource data on server |
 | 216.238.121.177 | no matching resource paths, volumes only |
+| 194.233.70.145 | no matching resource data on server |
+| 106.13.5.116 | no matching resource data on server |
+| 23.95.86.139 | no matching resource data on server |
 | 107.175.127.199 | no matching resource data on server |
 | 43.134.75.67 | no matching resource paths, volumes only |
 | 140.245.209.71 | no matching resource data on server |
@@ -58,10 +58,10 @@
 | 0 | 4 | 3 | 1 |
 | 1 | 4 | 3 | 1 |
 | 2 | 4 | 2 | 1 |
-| 3 | 4 | 1 | 2 |
-| 4 | 4 | 2 | 1 |
-| 5 | 4 | 0 | 0 |
-| 6 | 4 | 2 | 1 |
-| 7 | 4 | 3 | 0 |
+| 3 | 4 | 2 | 1 |
+| 4 | 4 | 1 | 2 |
+| 5 | 4 | 1 | 0 |
+| 6 | 4 | 0 | 1 |
+| 7 | 4 | 4 | 0 |
 | 8 | 1 | 0 | 0 |
 | 9 | 0 | 0 | 0 |
