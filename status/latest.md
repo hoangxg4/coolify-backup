@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #342 (id `40186632418`) |
+| **Run** | #343 (id `40208072827`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-10-25T10:53:44Z |
-| **Duration** | 15m 31s |
+| **Started** | 2026-10-25T15:40:42Z |
+| **Duration** | 15m 30s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -24,8 +24,8 @@
 |---|---|
 | 140.245.209.71 | backup failed (ssh rc=255) |
 | 13.140.162.90 | backup failed (ssh rc=124) |
-| 130.94.117.183 | backup failed (ssh rc=255) |
 | 203.86.236.158 | backup failed (ssh rc=255) |
+| 130.94.117.183 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
 | 124.174.76.213 | backup failed (ssh rc=255) |
 | 62.146.170.58 | backup failed (ssh rc=255) |
