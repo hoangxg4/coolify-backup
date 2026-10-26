@@ -2,26 +2,27 @@
 
 | | |
 |---|---|
-| **Run** | #344 (id `40230973440`) |
+| **Run** | #345 (id `40265012915`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-10-25T20:29:04Z |
-| **Duration** | 15m 36s |
+| **Started** | 2026-10-26T03:37:48Z |
+| **Duration** | 6m 08s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
 ## Summary
 
 - **Servers**: 31 (in 10 batch(es))
-- **Backup OK**: 14
-- **Failed**: 11
+- **Backup OK**: 13
+- **Failed**: 12
 - **Partial (fallback / missing data)**: 6
-- **Upload failed**: 1
+- **Upload failed**: 0
 - **Cleanup**: 24 server dir(s) scanned, 13 old backup(s) deleted
 
 ## Failed hosts
 
 | Host | Reason |
 |---|---|
+| 192.99.233.86 | backup failed (ssh rc=124) |
 | 140.245.209.71 | backup failed (ssh rc=255) |
 | 13.140.162.90 | backup failed (ssh rc=124) |
 | 130.94.117.183 | backup failed (ssh rc=255) |
@@ -49,16 +50,16 @@
 
 | Host | Reason |
 |---|---|
-| 192.99.233.86 | rclone copy failed |
+| - | None |
 
 ## Per-batch
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 4 | 3 | 0 |
+| 0 | 4 | 2 | 1 |
 | 1 | 4 | 1 | 2 |
-| 2 | 4 | 2 | 1 |
-| 3 | 4 | 2 | 2 |
+| 2 | 4 | 1 | 2 |
+| 3 | 4 | 3 | 1 |
 | 4 | 4 | 1 | 2 |
 | 5 | 4 | 2 | 1 |
 | 6 | 4 | 2 | 1 |
