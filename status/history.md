@@ -1,6 +1,8 @@
 # Coolify Backup - Run History
 
 
+## Run #354 - 2026-10-28T22:17:19Z - PARTIAL - 16m 06s - 14/30 OK
+Failed: 130.94.117.183 (backup failed (ssh rc=255)), 124.174.76.213 (backup failed (ssh rc=255)), 203.86.236.158 (backup failed (ssh rc=255)), 66.97.33.5 (backup failed (ssh rc=255)), 140.245.209.71 (backup failed (ssh rc=255)), 13.140.162.90 (backup failed (ssh rc=124)), 62.146.170.58 (backup failed (ssh rc=255)), 144.91.68.178 (backup failed (ssh rc=255)), 13.140.141.69 (backup failed (ssh rc=255))
 ## Run #353 - 2026-10-28T12:16:17Z - PARTIAL - 6m 16s - 11/30 OK
 Failed: 192.99.233.86 (backup failed (ssh rc=124)), 124.174.76.213 (backup failed (ssh rc=255)), 130.94.117.183 (backup failed (ssh rc=255)), 66.97.33.5 (backup failed (ssh rc=255)), 203.86.236.158 (backup failed (ssh rc=255)), 140.245.209.71 (backup failed (ssh rc=255)), 13.140.162.90 (backup failed (ssh rc=124)), 62.146.170.58 (backup failed (ssh rc=255)), 103.174.51.37 (backup failed (ssh rc=124)), 13.140.141.69 (backup failed (ssh rc=255)), 144.91.68.178 (backup failed (ssh rc=255)), 46.225.155.61 (backup failed (ssh rc=124))
 ## Run #352 - 2026-10-28T04:28:00Z - PARTIAL - 15m 37s - 14/32 OK
