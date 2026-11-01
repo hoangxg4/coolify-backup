@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #364 (id `41242007597`) |
+| **Run** | #365 (id `41274548309`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-10-31T21:06:22Z |
-| **Duration** | 10m 37s |
+| **Started** | 2026-11-01T04:49:17Z |
+| **Duration** | 9m 49s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -22,8 +22,8 @@
 
 | Host | Reason |
 |---|---|
-| 140.245.209.71 | backup failed (ssh rc=255) |
 | 124.174.76.213 | backup failed (ssh rc=255) |
+| 140.245.209.71 | backup failed (ssh rc=255) |
 | 130.94.117.183 | backup failed (ssh rc=255) |
 | 203.86.236.158 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
@@ -41,8 +41,8 @@
 |---|---|
 | 217.154.254.251 | no matching resource data on server |
 | 106.13.5.116 | no matching resource data on server |
-| 47.115.201.168 | no matching resource data on server |
 | 101.34.89.52 | no matching resource data on server |
+| 47.115.201.168 | no matching resource data on server |
 | 216.238.121.177 | no matching resource data on server |
 | 23.95.86.139 | no matching resource data on server |
 | 107.175.127.199 | no matching resource data on server |
@@ -59,8 +59,8 @@
 |---|---|---|---|
 | 0 | 3 | 1 | 1 |
 | 1 | 3 | 1 | 1 |
-| 2 | 3 | 1 | 0 |
-| 3 | 3 | 1 | 2 |
+| 2 | 3 | 1 | 1 |
+| 3 | 3 | 1 | 1 |
 | 4 | 3 | 1 | 2 |
 | 5 | 3 | 2 | 0 |
 | 6 | 3 | 1 | 1 |
