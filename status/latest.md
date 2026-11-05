@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #376 (id `41974605291`) |
+| **Run** | #377 (id `42042206067`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-11-05T05:32:05Z |
-| **Duration** | 6m 09s |
+| **Started** | 2026-11-05T14:09:02Z |
+| **Duration** | 13m 04s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -25,12 +25,12 @@
 | 140.245.209.71 | backup failed (ssh rc=255) |
 | 130.94.117.183 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
-| 192.99.233.86 | backup failed (ssh rc=255) |
 | 203.86.236.158 | backup failed (ssh rc=255) |
+| 192.99.233.86 | backup failed (ssh rc=255) |
 | 62.146.170.58 | backup failed (ssh rc=255) |
 | 13.140.162.90 | backup failed (ssh rc=124) |
 | 144.91.68.178 | backup failed (ssh rc=255) |
-| 129.121.148.18 | backup failed (ssh rc=124) |
+| 185.98.138.12 | backup failed (ssh rc=124) |
 | 46.225.155.61 | backup failed (ssh rc=124) |
 
 ## Partial backups
@@ -38,15 +38,15 @@
 | Host | Reason |
 |---|---|
 | 216.238.121.177 | no matching resource data on server |
-| 58.87.67.203 | no matching resource data on server |
-| 217.154.254.251 | no matching resource data on server |
 | 47.99.187.206 | no matching resource data on server |
+| 217.154.254.251 | no matching resource data on server |
+| 58.87.67.203 | no matching resource data on server |
 | 106.13.5.116 | no matching resource data on server |
 | 101.34.89.52 | no matching resource data on server |
 | 47.115.201.168 | no matching resource data on server |
-| 140.143.202.209 | no matching resource data on server |
 | 47.115.204.82 | no matching resource data on server |
 | 23.95.86.139 | no matching resource data on server |
+| 140.143.202.209 | no matching resource data on server |
 | 107.175.127.199 | no matching resource data on server |
 
 ## Upload failures
@@ -63,9 +63,9 @@
 | 1 | 4 | 2 | 0 |
 | 2 | 4 | 0 | 2 |
 | 3 | 4 | 2 | 1 |
-| 4 | 4 | 2 | 2 |
+| 4 | 4 | 1 | 2 |
 | 5 | 4 | 2 | 0 |
-| 6 | 4 | 0 | 2 |
+| 6 | 4 | 1 | 2 |
 | 7 | 4 | 2 | 2 |
 | 8 | 2 | 1 | 1 |
 | 9 | 0 | 0 | 0 |
