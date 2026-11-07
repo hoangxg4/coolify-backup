@@ -1,6 +1,8 @@
 # Coolify Backup - Run History
 
 
+## Run #382 - 2026-11-07T04:58:13Z - PARTIAL - 9m 37s - 13/34 OK
+Failed: 130.94.117.183 (backup failed (ssh rc=255)), 140.245.209.71 (backup failed (ssh rc=255)), 129.121.171.48 (backup failed (ssh rc=255)), 203.86.236.158 (backup failed (ssh rc=255)), 192.99.233.86 (backup failed (ssh rc=255)), 66.97.33.5 (backup failed (ssh rc=255)), 47.115.204.82 (backup failed (ssh rc=255)), 107.175.127.199 (backup failed (ssh rc=255)), 62.146.170.58 (backup failed (ssh rc=255)), 13.140.162.90 (backup failed (ssh rc=124)), 144.91.68.178 (backup failed (ssh rc=255)), 46.225.155.61 (backup failed (ssh rc=124))
 ## Run #381 - 2026-11-06T22:47:05Z - PARTIAL - 9m 56s - 13/34 OK
 Failed: 129.121.171.48 (backup failed (ssh rc=255)), 130.94.117.183 (backup failed (ssh rc=255)), 140.245.209.71 (backup failed (ssh rc=255)), 203.86.236.158 (backup failed (ssh rc=255)), 66.97.33.5 (backup failed (ssh rc=255)), 192.99.233.86 (backup failed (ssh rc=255)), 47.115.204.82 (backup failed (ssh rc=255)), 107.175.127.199 (backup failed (ssh rc=255)), 62.146.170.58 (backup failed (ssh rc=255)), 13.140.162.90 (backup failed (ssh rc=124)), 144.91.68.178 (backup failed (ssh rc=255)), 46.225.155.61 (backup failed (ssh rc=124))
 ## Run #380 - 2026-11-06T13:51:15Z - PARTIAL - 13m 39s - 12/34 OK
