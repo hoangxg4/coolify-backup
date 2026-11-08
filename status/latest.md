@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #386 (id `42482314406`) |
+| **Run** | #387 (id `42526835696`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-11-08T12:53:08Z |
-| **Duration** | 8m 34s |
+| **Started** | 2026-11-08T21:46:07Z |
+| **Duration** | 9m 30s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -22,9 +22,9 @@
 
 | Host | Reason |
 |---|---|
-| 206.237.13.32 | backup failed (ssh rc=255) |
-| 129.121.171.48 | backup failed (ssh rc=255) |
 | 140.245.209.71 | backup failed (ssh rc=255) |
+| 129.121.171.48 | backup failed (ssh rc=255) |
+| 206.237.13.32 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
 | 47.115.204.82 | backup failed (ssh rc=255) |
 | 107.175.127.199 | backup failed (ssh rc=255) |
@@ -38,11 +38,11 @@
 | Host | Reason |
 |---|---|
 | 217.154.254.251 | no matching resource data on server |
+| 47.99.187.206 | no matching resource data on server |
 | 58.87.67.203 | no matching resource data on server |
 | 216.238.121.177 | no matching resource data on server |
-| 47.99.187.206 | no matching resource data on server |
-| 106.13.5.116 | no matching resource data on server |
 | 47.115.201.168 | no matching resource data on server |
+| 106.13.5.116 | no matching resource data on server |
 | 101.34.89.52 | no matching resource data on server |
 | 140.143.202.209 | no matching resource data on server |
 | 23.95.86.139 | no matching resource data on server |
@@ -57,13 +57,13 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 4 | 2 | 0 |
-| 1 | 4 | 1 | 1 |
+| 0 | 4 | 1 | 0 |
+| 1 | 4 | 2 | 0 |
 | 2 | 4 | 2 | 1 |
-| 3 | 4 | 1 | 1 |
-| 4 | 4 | 3 | 1 |
+| 3 | 4 | 2 | 1 |
+| 4 | 4 | 2 | 2 |
 | 5 | 4 | 2 | 1 |
 | 6 | 4 | 0 | 3 |
-| 7 | 4 | 4 | 0 |
-| 8 | 3 | 1 | 2 |
+| 7 | 4 | 3 | 1 |
+| 8 | 3 | 2 | 1 |
 | 9 | 0 | 0 | 0 |
