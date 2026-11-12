@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Run** | #394 (id `43031465249`) |
+| **Run** | #395 (id `43125153805`) |
 | **Trigger** | scheduled (every 6h) |
-| **Started** | 2026-11-11T13:41:52Z |
-| **Duration** | 13m 26s |
+| **Started** | 2026-11-12T00:09:04Z |
+| **Duration** | 10m 59s |
 | **Result** | :warning: PARTIAL |
 | **API resource mapping** | OK (resource-filtered) |
 
@@ -16,18 +16,18 @@
 - **Failed**: 8
 - **Partial (fallback / missing data)**: 10
 - **Upload failed**: 0
-- **Cleanup**:  server dir(s) scanned,  old backup(s) deleted
+- **Cleanup**: 36 server dir(s) scanned, 30 old backup(s) deleted
 
 ## Failed hosts
 
 | Host | Reason |
 |---|---|
-| 140.245.209.71 | backup failed (ssh rc=255) |
 | 129.121.171.48 | backup failed (ssh rc=255) |
 | 47.115.204.82 | backup failed (ssh rc=255) |
 | 206.237.13.32 | backup failed (ssh rc=255) |
 | 66.97.33.5 | backup failed (ssh rc=255) |
 | 23.95.86.139 | backup failed (ssh rc=255) |
+| 140.245.209.71 | backup failed (ssh rc=255) |
 | 13.140.162.90 | backup failed (ssh rc=124) |
 | 46.225.155.61 | backup failed (ssh rc=124) |
 
@@ -36,13 +36,13 @@
 | Host | Reason |
 |---|---|
 | 96.30.197.163 | no matching resource data on server |
-| 216.238.121.177 | no matching resource data on server |
-| 47.99.187.206 | no matching resource data on server |
 | 217.154.254.251 | no matching resource data on server |
+| 216.238.121.177 | no matching resource data on server |
 | 58.87.67.203 | no matching resource data on server |
+| 47.99.187.206 | no matching resource data on server |
 | 106.13.5.116 | no matching resource data on server |
-| 47.115.201.168 | no matching resource data on server |
 | 101.34.89.52 | no matching resource data on server |
+| 47.115.201.168 | no matching resource data on server |
 | 107.175.127.199 | no matching resource data on server |
 | 140.143.202.209 | no matching resource data on server |
 
@@ -56,13 +56,13 @@
 
 | Batch | Total | OK | Failed |
 |---|---|---|---|
-| 0 | 4 | 1 | 0 |
-| 1 | 4 | 2 | 0 |
+| 0 | 4 | 0 | 0 |
+| 1 | 4 | 3 | 0 |
 | 2 | 4 | 2 | 1 |
-| 3 | 4 | 0 | 2 |
-| 4 | 4 | 1 | 2 |
-| 5 | 4 | 3 | 0 |
-| 6 | 4 | 2 | 2 |
+| 3 | 4 | 1 | 1 |
+| 4 | 4 | 0 | 2 |
+| 5 | 4 | 2 | 2 |
+| 6 | 4 | 3 | 1 |
 | 7 | 4 | 3 | 1 |
 | 8 | 1 | 1 | 0 |
 | 9 | 0 | 0 | 0 |
